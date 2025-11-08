@@ -38,12 +38,13 @@ detect_platform() {
     OS=$(uname -s | tr '[:upper:]' '[:lower:]')
     ARCH=$(uname -m)
 
+    # Map to GoReleaser naming conventions
     case "$OS" in
         linux)
-            OS="linux"
+            OS_GORELEASER="Linux"
             ;;
         darwin)
-            OS="darwin"
+            OS_GORELEASER="Darwin"
             ;;
         *)
             print_error "Unsupported operating system: $OS"
@@ -53,13 +54,13 @@ detect_platform() {
 
     case "$ARCH" in
         x86_64)
-            ARCH="amd64"
+            ARCH_GORELEASER="x86_64"
             ;;
         aarch64|arm64)
-            ARCH="arm64"
+            ARCH_GORELEASER="arm64"
             ;;
-        armv7l)
-            ARCH="arm"
+        armv7l|armv7)
+            ARCH_GORELEASER="armv7"
             ;;
         *)
             print_error "Unsupported architecture: $ARCH"
@@ -67,7 +68,12 @@ detect_platform() {
             ;;
     esac
 
-    PLATFORM="${OS}-${ARCH}"
+    # Determine archive extension
+    if [ "$OS" = "linux" ] || [ "$OS" = "darwin" ]; then
+        ARCHIVE_EXT="tar.gz"
+    else
+        ARCHIVE_EXT="zip"
+    fi
 }
 
 # Get latest release version
@@ -85,44 +91,84 @@ get_latest_version() {
     print_info "Latest version: $LATEST_VERSION"
 }
 
-# Download binary
+# Download and extract archive
 download_binary() {
-    DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${LATEST_VERSION}/${BINARY_NAME}-${PLATFORM}"
-    TMP_FILE="/tmp/${BINARY_NAME}-${LATEST_VERSION}"
+    # Build GoReleaser archive name: dockershield_0.1.0_Linux_x86_64.tar.gz
+    VERSION_NO_V="${LATEST_VERSION#v}"  # Remove 'v' prefix
+    ARCHIVE_NAME="${BINARY_NAME}_${VERSION_NO_V}_${OS_GORELEASER}_${ARCH_GORELEASER}.${ARCHIVE_EXT}"
+    DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${LATEST_VERSION}/${ARCHIVE_NAME}"
+    TMP_DIR="/tmp/${BINARY_NAME}-install-$$"
+    TMP_ARCHIVE="${TMP_DIR}/${ARCHIVE_NAME}"
 
-    print_info "Downloading from: $DOWNLOAD_URL"
+    mkdir -p "$TMP_DIR"
+
+    print_info "Downloading ${ARCHIVE_NAME}..."
+    print_info "URL: $DOWNLOAD_URL"
 
     if command -v curl &> /dev/null; then
-        curl -sL "$DOWNLOAD_URL" -o "$TMP_FILE"
+        curl -sLf "$DOWNLOAD_URL" -o "$TMP_ARCHIVE" || {
+            print_error "Download failed. Please check the URL and your internet connection."
+            rm -rf "$TMP_DIR"
+            exit 1
+        }
     elif command -v wget &> /dev/null; then
-        wget -q "$DOWNLOAD_URL" -O "$TMP_FILE"
+        wget -q "$DOWNLOAD_URL" -O "$TMP_ARCHIVE" || {
+            print_error "Download failed. Please check the URL and your internet connection."
+            rm -rf "$TMP_DIR"
+            exit 1
+        }
     else
         print_error "Neither curl nor wget found. Please install one of them."
         exit 1
     fi
 
-    if [ ! -f "$TMP_FILE" ]; then
-        print_error "Download failed"
-        exit 1
+    print_success "Downloaded successfully"
+
+    # Extract archive
+    print_info "Extracting archive..."
+    if [ "$ARCHIVE_EXT" = "tar.gz" ]; then
+        tar -xzf "$TMP_ARCHIVE" -C "$TMP_DIR" || {
+            print_error "Extraction failed"
+            rm -rf "$TMP_DIR"
+            exit 1
+        }
+    else
+        unzip -q "$TMP_ARCHIVE" -d "$TMP_DIR" || {
+            print_error "Extraction failed"
+            rm -rf "$TMP_DIR"
+            exit 1
+        }
     fi
 
-    print_success "Downloaded successfully"
+    print_success "Extracted successfully"
 }
 
 # Install binary
 install_binary() {
     print_info "Installing to $INSTALL_DIR..."
 
+    # Find the binary in extracted files
+    BINARY_PATH="${TMP_DIR}/${BINARY_NAME}"
+
+    if [ ! -f "$BINARY_PATH" ]; then
+        print_error "Binary not found in archive"
+        rm -rf "$TMP_DIR"
+        exit 1
+    fi
+
     # Make executable
-    chmod +x "$TMP_FILE"
+    chmod +x "$BINARY_PATH"
 
     # Move to install directory (may require sudo)
     if [ -w "$INSTALL_DIR" ]; then
-        mv "$TMP_FILE" "$INSTALL_DIR/$BINARY_NAME"
+        mv "$BINARY_PATH" "$INSTALL_DIR/$BINARY_NAME"
     else
         print_warning "Requires sudo privileges to install to $INSTALL_DIR"
-        sudo mv "$TMP_FILE" "$INSTALL_DIR/$BINARY_NAME"
+        sudo mv "$BINARY_PATH" "$INSTALL_DIR/$BINARY_NAME"
     fi
+
+    # Cleanup
+    rm -rf "$TMP_DIR"
 
     print_success "Installed to $INSTALL_DIR/$BINARY_NAME"
 }
@@ -148,7 +194,7 @@ main() {
     echo ""
 
     detect_platform
-    print_info "Detected platform: $PLATFORM"
+    print_info "Detected platform: ${OS_GORELEASER}_${ARCH_GORELEASER}"
 
     get_latest_version
     download_binary

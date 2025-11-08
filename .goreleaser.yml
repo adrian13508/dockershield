@@ -1,0 +1,136 @@
+# GoReleaser configuration for DockerShield
+# Documentation: https://goreleaser.com
+
+version: 2
+
+before:
+  hooks:
+    # You may remove this if you don't use go modules
+    - go mod tidy
+
+builds:
+  - id: dockershield
+    binary: dockershield
+    main: ./cmd/dockershield
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+      - arm
+    goarm:
+      - 7
+    ignore:
+      # Windows ARM is not commonly used
+      - goos: windows
+        goarch: arm64
+      - goos: windows
+        goarch: arm
+      # Darwin ARM (32-bit) doesn't exist
+      - goos: darwin
+        goarch: arm
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+
+archives:
+  - id: dockershield
+    format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE
+      - CHANGELOG.md
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: 'New Features'
+      regexp: "^.*feat[(\\w)]*:+.*$"
+      order: 0
+    - title: 'Bug Fixes'
+      regexp: "^.*fix[(\\w)]*:+.*$"
+      order: 1
+    - title: 'Security Updates'
+      regexp: "^.*sec[(\\w)]*:+.*$"
+      order: 2
+    - title: 'Performance Improvements'
+      regexp: "^.*perf[(\\w)]*:+.*$"
+      order: 3
+    - title: 'Other Changes'
+      order: 999
+
+release:
+  github:
+    owner: adrian13508
+    name: dockershield
+  draft: false
+  prerelease: auto
+  mode: replace
+  header: |
+    ## DockerShield {{ .Tag }}
+
+    **Catch exposed ports before hackers do**
+
+    ### Quick Install
+
+    ```bash
+    # Linux/macOS
+    curl -sSL https://raw.githubusercontent.com/adrian13508/dockershield/main/install.sh | bash
+
+    # Or download the binary for your platform below
+    ```
+
+  footer: |
+    ---
+
+    **Full Changelog**: https://github.com/adrian13508/dockershield/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+    ### Verification
+
+    Download checksums.txt and verify your binary:
+    ```bash
+    sha256sum -c checksums.txt 2>&1 | grep OK
+    ```
+
+    ---
+    Made with ❤️ for the self-hosting community
+
+# Uncomment if you want to publish to Homebrew
+# brews:
+#   - name: dockershield
+#     repository:
+#       owner: adrian13508
+#       name: homebrew-tap
+#     homepage: https://github.com/adrian13508/dockershield
+#     description: Docker security scanner - catch exposed ports before hackers do
+#     license: Apache-2.0
+#     install: |
+#       bin.install "dockershield"

@@ -18,8 +18,8 @@ vendor/
 build/
 dist/
 
-# DockerShield binary
-dockershield
+# DockerShield binary (root directory only)
+/dockershield
 
 # IDE
 .idea/

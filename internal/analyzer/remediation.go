@@ -9,11 +9,13 @@ import (
 
 // Remediation represents a fix for a security issue
 type Remediation struct {
-	Issue       string
-	Severity    models.RiskLevel
-	Fix         string
-	Command     string // Executable command to fix the issue
-	Explanation string
+	Issue         string
+	Severity      models.RiskLevel
+	Fix           string
+	Command       string // Executable command to fix the issue
+	Explanation   string
+	ContainerPort string // For grouping IPv4/IPv6
+	HostPort      string // For grouping IPv4/IPv6
 }
 
 // GenerateRemediation creates remediation steps for a port binding
@@ -66,6 +68,9 @@ func GenerateContainerRemediations(container models.Container) []Remediation {
 
 	for _, port := range container.Ports {
 		if r := GenerateRemediation(container.Name, port); r != nil {
+			// Add port info to remediation for grouping purposes
+			r.ContainerPort = port.ContainerPort
+			r.HostPort = port.HostPort
 			remediations = append(remediations, *r)
 		}
 	}

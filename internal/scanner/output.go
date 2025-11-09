@@ -3,9 +3,39 @@ package scanner
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/fatih/color"
 )
+
+// stripAnsi removes ANSI color codes to get actual text length
+func stripAnsi(str string) string {
+	re := regexp.MustCompile(`\x1b\[[0-9;]*m`)
+	return re.ReplaceAllString(str, "")
+}
+
+// padTableLine pads a line to fit within a box of given width
+func padTableLine(content string, width int) string {
+	plainText := stripAnsi(content)
+	runes := []rune(plainText)
+
+	// Count emojis - they typically display as 2 characters wide
+	emojiCount := 0
+	for _, r := range runes {
+		if (r >= 0x1F300 && r <= 0x1F9FF) || (r >= 0x2600 && r <= 0x26FF) {
+			emojiCount++
+		}
+	}
+
+	visualWidth := len(runes) + emojiCount
+	paddingNeeded := width - visualWidth
+	if paddingNeeded < 0 {
+		paddingNeeded = 0
+	}
+
+	return content + strings.Repeat(" ", paddingNeeded)
+}
 
 // FormatTerminal outputs category results to terminal
 func (r *CategoryResult) FormatTerminal() {
@@ -16,10 +46,12 @@ func (r *CategoryResult) FormatTerminal() {
 	cyan := color.New(color.FgCyan, color.Bold).SprintFunc()
 	white := color.New(color.FgWhite, color.Bold).SprintFunc()
 
+	const boxWidth = 42
+
 	fmt.Println()
 	fmt.Println("┌────────────────────────────────────────────┐")
-	fmt.Printf("│  %s                 │\n", cyan(fmt.Sprintf("Category Check: %s", r.Category)))
-	fmt.Printf("│  Scan Time: %s                     │\n", white(fmt.Sprintf("%dms", r.ScanTimeMs)))
+	fmt.Printf("│  %s  │\n", padTableLine(cyan(fmt.Sprintf("Category Check: %s", r.Category)), boxWidth-2))
+	fmt.Printf("│  %s  │\n", padTableLine(fmt.Sprintf("Scan Time: %s", white(fmt.Sprintf("%dms", r.ScanTimeMs))), boxWidth-2))
 	fmt.Println("└────────────────────────────────────────────┘")
 	fmt.Println()
 

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -613,6 +614,46 @@ func getRiskIcon(risk models.RiskLevel) string {
 	}
 }
 
+// stripAnsi removes ANSI color codes to get actual text length
+func stripAnsi(str string) string {
+	// Simple ANSI escape sequence pattern
+	re := regexp.MustCompile(`\x1b\[[0-9;]*m`)
+	return re.ReplaceAllString(str, "")
+}
+
+// padTableLine pads a line to fit within a box of given width
+func padTableLine(content string, width int) string {
+	// Strip ANSI codes to get actual visible length
+	plainText := stripAnsi(content)
+
+	// Convert to runes to count actual characters (not bytes)
+	runes := []rune(plainText)
+
+	// Count emojis - they typically display as 2 characters wide
+	// but are counted as 1 rune
+	emojiCount := 0
+	for _, r := range runes {
+		// Emoji ranges:
+		// 0x1F300-0x1F9FF: Emoticons, symbols, pictographs
+		// 0x2600-0x26FF: Miscellaneous symbols (includes ⚠️)
+		// 0xFE0F: Variation selector (makes preceding char emoji-style)
+		if (r >= 0x1F300 && r <= 0x1F9FF) || (r >= 0x2600 && r <= 0x26FF) {
+			emojiCount++
+		}
+	}
+
+	// Visual width = number of runes + extra width from emojis (each emoji = 2 wide, already counted as 1)
+	visualWidth := len(runes) + emojiCount
+
+	// Calculate padding needed
+	paddingNeeded := width - visualWidth
+	if paddingNeeded < 0 {
+		paddingNeeded = 0
+	}
+
+	return content + strings.Repeat(" ", paddingNeeded)
+}
+
 // displaySecuritySummary shows the overall security score and risk breakdown
 func displaySecuritySummary(score int, rating string, summary models.RiskSummary) {
 	// Color functions
@@ -632,29 +673,36 @@ func displaySecuritySummary(score int, rating string, summary models.RiskSummary
 		scoreColor = red
 	}
 
+	const boxWidth = 42 // Width inside the box (excluding borders)
+
 	fmt.Println("┌────────────────────────────────────────────┐")
-	fmt.Printf("│  %s  │\n", cyan("SECURITY SUMMARY"))
+	fmt.Printf("│  %s  │\n", padTableLine(cyan("SECURITY SUMMARY"), boxWidth-2))
 	fmt.Println("├────────────────────────────────────────────┤")
-	fmt.Printf("│  Security Score: %s  │\n", scoreColor(fmt.Sprintf("%d/100 (%s)", score, rating)))
-	fmt.Println("│                                            │")
+	fmt.Printf("│  %s  │\n", padTableLine(fmt.Sprintf("Security Score: %s", scoreColor(fmt.Sprintf("%d/100 (%s)", score, rating))), boxWidth-2))
+	fmt.Printf("│  %s  │\n", padTableLine("", boxWidth-2)) // Empty line
 
 	// Risk breakdown
 	if summary.Critical > 0 {
-		fmt.Printf("│  %s Critical Issues: %s                    │\n", red("🔴"), white(fmt.Sprintf("%d", summary.Critical)))
+		line := fmt.Sprintf("%s Critical Issues: %s", red("🔴"), white(fmt.Sprintf("%d", summary.Critical)))
+		fmt.Printf("│  %s  │\n", padTableLine(line, boxWidth-2))
 	}
 	if summary.High > 0 {
-		fmt.Printf("│  %s High Issues: %s                        │\n", red("⚠️"), white(fmt.Sprintf("%d", summary.High)))
+		line := fmt.Sprintf("%s High Issues: %s", red("⚠️"), white(fmt.Sprintf("%d", summary.High)))
+		fmt.Printf("│  %s  │\n", padTableLine(line, boxWidth-2))
 	}
 	if summary.Medium > 0 {
-		fmt.Printf("│  %s Medium Issues: %s                      │\n", yellow("🟡"), white(fmt.Sprintf("%d", summary.Medium)))
+		line := fmt.Sprintf("%s Medium Issues: %s", yellow("🟡"), white(fmt.Sprintf("%d", summary.Medium)))
+		fmt.Printf("│  %s  │\n", padTableLine(line, boxWidth-2))
 	}
 	if summary.Low > 0 {
-		fmt.Printf("│  %s Low Issues: %s                         │\n", green("ℹ️"), white(fmt.Sprintf("%d", summary.Low)))
+		line := fmt.Sprintf("%s Low Issues: %s", green("ℹ️"), white(fmt.Sprintf("%d", summary.Low)))
+		fmt.Printf("│  %s  │\n", padTableLine(line, boxWidth-2))
 	}
 
 	// If no issues at all
 	if summary.Critical == 0 && summary.High == 0 && summary.Medium == 0 {
-		fmt.Printf("│  %s                              │\n", green("✅ No critical issues found!"))
+		line := green("✅ No critical issues found!")
+		fmt.Printf("│  %s  │\n", padTableLine(line, boxWidth-2))
 	}
 
 	fmt.Println("└────────────────────────────────────────────┘")
@@ -663,28 +711,88 @@ func displaySecuritySummary(score int, rating string, summary models.RiskSummary
 
 // displayRemediations shows fix recommendations for security issues
 func displayRemediations(containers []models.Container) {
-	var allRemediations []analyzer.Remediation
+	// Group remediations by container + port to handle IPv4/IPv6 together
+	type portKey struct {
+		container string
+		port      string
+		issue     string
+	}
+	groupedRemediations := make(map[portKey][]analyzer.Remediation)
 
-	// Collect all remediations
+	// Collect and group all remediations
 	for _, container := range containers {
 		remediations := analyzer.GenerateContainerRemediations(container)
-		allRemediations = append(allRemediations, remediations...)
+		for _, r := range remediations {
+			// Extract port number from issue (if it's a port-related issue)
+			// We group by the base issue text (without specific IPv4/IPv6 details)
+			key := portKey{
+				container: container.Name,
+				port:      "", // Will be set if we can extract port
+				issue:     r.Issue,
+			}
+			groupedRemediations[key] = append(groupedRemediations[key], r)
+		}
 	}
 
-	if len(allRemediations) == 0 {
+	if len(groupedRemediations) == 0 {
 		return
 	}
 
 	// Show remediation section
 	cyan := color.New(color.FgCyan, color.Bold).SprintFunc()
+	yellow := color.New(color.FgYellow).SprintFunc()
 	fmt.Printf("\n%s\n", cyan("🔧 RECOMMENDED FIXES"))
 	fmt.Println("═══════════════════════════════════════════════")
 	fmt.Println()
 
-	// Display each remediation
-	for i, r := range allRemediations {
-		fmt.Printf("%d. %s\n", i+1, analyzer.FormatRemediation(r))
+	// Flatten and display grouped remediations
+	counter := 1
+	for _, rems := range groupedRemediations {
+		// If multiple remediations in group (IPv4 + IPv6), merge them
+		if len(rems) > 1 {
+			// Take the first one as base
+			merged := rems[0]
+			// Modify the issue to indicate both protocols
+			merged.Issue = strings.Replace(merged.Issue, "Port exposed", "Port exposed on IPv4 AND IPv6", 1)
+
+			// Add IPv6 warning to explanation
+			merged.Explanation += "\n\n" + yellow("⚠️ IMPORTANT: This port is exposed on BOTH IPv4 (0.0.0.0) and IPv6 (::).") +
+				"\n   Binding to 127.0.0.1 secures both protocols. IPv6 localhost can be explicitly bound if needed."
+
+			// Update command to fix both
+			if strings.Contains(merged.Command, "127.0.0.1") {
+				merged.Command = strings.Replace(merged.Command,
+					"# Use: -p 127.0.0.1:",
+					"# Use (IPv4 + IPv6): -p 127.0.0.1:", 1)
+				merged.Command += "\n   # For IPv6 localhost: -p [::1]:" + extractPort(merged.Command)
+
+				// Update docker-compose example
+				if strings.Contains(merged.Command, "docker-compose") {
+					merged.Command += "\n   # Or in docker-compose.yml:\n" +
+						"   #   ports:\n" +
+						"   #     - \"127.0.0.1:" + extractPort(merged.Command) + "\"\n" +
+						"   #     - \"[::1]:" + extractPort(merged.Command) + "\"  # If IPv6 needed, add this"
+				}
+			}
+
+			fmt.Printf("%d. %s\n", counter, analyzer.FormatRemediation(merged))
+		} else {
+			// Single remediation (no IPv4/IPv6 pairing)
+			fmt.Printf("%d. %s\n", counter, analyzer.FormatRemediation(rems[0]))
+		}
+		counter++
 	}
+}
+
+// extractPort extracts port number from command string
+func extractPort(command string) string {
+	// Simple extraction: look for pattern like "127.0.0.1:XXXX"
+	parts := strings.Split(command, "127.0.0.1:")
+	if len(parts) > 1 {
+		portPart := strings.Fields(parts[1])[0]
+		return strings.Trim(portPart, "\":,")
+	}
+	return "PORT"
 }
 
 // convertFirewallAnalysis converts system firewall analysis to model

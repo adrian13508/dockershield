@@ -3,11 +3,41 @@ package reporter
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/adrian13508/dockershield/pkg/models"
 	"github.com/fatih/color"
 )
+
+// stripAnsi removes ANSI color codes to get actual text length
+func stripAnsi(str string) string {
+	re := regexp.MustCompile(`\x1b\[[0-9;]*m`)
+	return re.ReplaceAllString(str, "")
+}
+
+// padTableLine pads a line to fit within a box of given width
+func padTableLine(content string, width int) string {
+	plainText := stripAnsi(content)
+	runes := []rune(plainText)
+
+	// Count emojis - they typically display as 2 characters wide
+	emojiCount := 0
+	for _, r := range runes {
+		if (r >= 0x1F300 && r <= 0x1F9FF) || (r >= 0x2600 && r <= 0x26FF) {
+			emojiCount++
+		}
+	}
+
+	visualWidth := len(runes) + emojiCount
+	paddingNeeded := width - visualWidth
+	if paddingNeeded < 0 {
+		paddingNeeded = 0
+	}
+
+	return content + strings.Repeat(" ", paddingNeeded)
+}
 
 // StatusSummary represents a quick status summary
 type StatusSummary struct {
@@ -36,42 +66,49 @@ func FormatStatusTerminal(result *models.ScanResult) {
 	age := time.Since(result.Timestamp)
 	ageStr := formatDuration(age)
 
+	const boxWidth = 42
+
 	fmt.Println("┌────────────────────────────────────────────┐")
-	fmt.Printf("│  %s                 │\n", cyan("DockerShield Status"))
+	fmt.Printf("│  %s  │\n", padTableLine(cyan("DockerShield Status"), boxWidth-2))
 	fmt.Println("├────────────────────────────────────────────┤")
-	fmt.Printf("│  Last Scan: %s                     │\n", white(ageStr))
-	fmt.Printf("│  Containers: %s running                   │\n", white(fmt.Sprintf("%d", len(result.Containers))))
-	fmt.Println("│                                            │")
+	fmt.Printf("│  %s  │\n", padTableLine(fmt.Sprintf("Last Scan: %s", white(ageStr)), boxWidth-2))
+	fmt.Printf("│  %s  │\n", padTableLine(fmt.Sprintf("Containers: %s running", white(fmt.Sprintf("%d", len(result.Containers)))), boxWidth-2))
+	fmt.Printf("│  %s  │\n", padTableLine("", boxWidth-2))
 
 	// Risk summary
 	summary := result.RiskSummary
 	if summary.Critical > 0 {
-		fmt.Printf("│  %s Critical: %s                           │\n", red("🔴"), white(fmt.Sprintf("%d", summary.Critical)))
+		line := fmt.Sprintf("%s Critical: %s", red("🔴"), white(fmt.Sprintf("%d", summary.Critical)))
+		fmt.Printf("│  %s  │\n", padTableLine(line, boxWidth-2))
 	}
 	if summary.High > 0 {
-		fmt.Printf("│  %s High: %s                              │\n", yellow("⚠️ "), white(fmt.Sprintf("%d", summary.High)))
+		line := fmt.Sprintf("%s High: %s", yellow("⚠️"), white(fmt.Sprintf("%d", summary.High)))
+		fmt.Printf("│  %s  │\n", padTableLine(line, boxWidth-2))
 	}
 	if summary.Medium > 0 {
-		fmt.Printf("│  %s Medium: %s                            │\n", yellow("🟡"), white(fmt.Sprintf("%d", summary.Medium)))
+		line := fmt.Sprintf("%s Medium: %s", yellow("🟡"), white(fmt.Sprintf("%d", summary.Medium)))
+		fmt.Printf("│  %s  │\n", padTableLine(line, boxWidth-2))
 	}
 	if summary.Low > 0 {
-		fmt.Printf("│  %s Low: %s                               │\n", green("ℹ️ "), white(fmt.Sprintf("%d", summary.Low)))
+		line := fmt.Sprintf("%s Low: %s", green("ℹ️"), white(fmt.Sprintf("%d", summary.Low)))
+		fmt.Printf("│  %s  │\n", padTableLine(line, boxWidth-2))
 	}
 
 	// If no issues
 	if summary.Critical == 0 && summary.High == 0 && summary.Medium == 0 {
-		fmt.Printf("│  %s                      │\n", green("✅ No critical issues found!"))
+		line := green("✅ No critical issues found!")
+		fmt.Printf("│  %s  │\n", padTableLine(line, boxWidth-2))
 	}
 
 	// Security score
-	fmt.Println("│                                            │")
+	fmt.Printf("│  %s  │\n", padTableLine("", boxWidth-2))
 	scoreColor := green
 	if result.OverallScore < 50 {
 		scoreColor = red
 	} else if result.OverallScore < 70 {
 		scoreColor = yellow
 	}
-	fmt.Printf("│  Security Score: %s                  │\n", scoreColor(fmt.Sprintf("%d/100", result.OverallScore)))
+	fmt.Printf("│  %s  │\n", padTableLine(fmt.Sprintf("Security Score: %s", scoreColor(fmt.Sprintf("%d/100", result.OverallScore))), boxWidth-2))
 
 	fmt.Println("└────────────────────────────────────────────┘")
 	fmt.Println()

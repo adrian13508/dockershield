@@ -14,6 +14,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Email/webhook alerting
 - Integration with monitoring tools (Prometheus, Grafana)
 
+## [0.1.2] - 2025-11-09
+
+### Fixed
+- **Upgrade Command Compatibility**
+  - Fixed GoReleaser archive naming to use lowercase OS names (darwin, linux, windows)
+  - Corrected issue where `dockershield upgrade` failed with "no releases found" error
+  - go-github-selfupdate library now properly detects and downloads release assets
+
+- **Developer Experience**
+  - Added current version display to upgrade command output
+  - Fixed .gitignore pattern to only ignore root binary, not source directory
+
+### Technical Details
+- Changed GoReleaser template from `{{- title .Os }}_` to `{{- .Os }}_`
+- Archive names now match Go's runtime.GOOS values for proper asset detection
+- Release assets: `dockershield_0.1.2_darwin_arm64.tar.gz` (lowercase) instead of `dockershield_0.1.2_Darwin_arm64.tar.gz` (title case)
+
+## [0.1.1] - 2025-11-09
+
+### Fixed
+- Updated install script to work with GoReleaser archive structure
+- Fixed automated release workflow to use GoReleaser v2
+
 ## [0.1.0] - 2025-11-07
 
 ### Added
@@ -93,5 +116,7 @@ DockerShield's first public release provides comprehensive VPS security scanning
 - Future updates will maintain backward compatibility
 - Breaking changes will only occur in major version bumps (v2.0.0, etc.)
 
-[Unreleased]: https://github.com/adrian13508/dockershield/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/adrian13508/dockershield/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/adrian13508/dockershield/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/adrian13508/dockershield/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/adrian13508/dockershield/releases/tag/v0.1.0

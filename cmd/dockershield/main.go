@@ -857,6 +857,10 @@ func runUpgrade(cmd *cobra.Command, args []string) error {
 	// Clean version string (remove 'v' prefix if present)
 	currentVer := strings.TrimPrefix(version, "v")
 
+	// Display current version
+	fmt.Printf("Current version: %s\n", green(currentVer))
+	fmt.Println()
+
 	// Check for updates first
 	fmt.Print("Checking for updates... ")
 	updateInfo, err := updater.CheckForUpdates(currentVer)

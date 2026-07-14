@@ -12,7 +12,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - State persistence and change detection
 - Configuration file support
 - Email/webhook alerting
-- Integration with monitoring tools (Prometheus, Grafana)
+
+## [0.1.3] - 2026-07-14
+
+### Added
+- **Prometheus Metrics Output**
+  - New `scan --prometheus` flag emits metrics in the Prometheus text exposition format
+  - Designed for the node_exporter textfile collector: `dockershield scan --prometheus > dockershield.prom`
+  - Metrics: security score, risk counts by severity, publicly exposed ports per container, UFW status, Docker firewall bypass status, container counts by state, last scan timestamp
+  - Enables continuous monitoring and alerting via cron + Prometheus/Alertmanager/Grafana — no daemon required
+  - See the "Continuous Monitoring (Prometheus)" section in the README for cron and alert rule examples
+
+### Fixed
+- `TestJSONWriteToFile` used an absolute path rejected by `WriteToFile` path validation
 
 ## [0.1.2] - 2025-11-09
 
@@ -116,7 +128,8 @@ DockerShield's first public release provides comprehensive VPS security scanning
 - Future updates will maintain backward compatibility
 - Breaking changes will only occur in major version bumps (v2.0.0, etc.)
 
-[Unreleased]: https://github.com/adrian13508/dockershield/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/adrian13508/dockershield/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/adrian13508/dockershield/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/adrian13508/dockershield/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/adrian13508/dockershield/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/adrian13508/dockershield/releases/tag/v0.1.0

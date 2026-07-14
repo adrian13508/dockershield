@@ -85,6 +85,7 @@ dockershield upgrade
 - **Risk Classification**: Automatically categorizes issues as CRITICAL/HIGH/MEDIUM/LOW
 - **Actionable Recommendations**: Get exact commands to fix security issues
 - **JSON Output**: Machine-readable format for CI/CD and automation
+- **Prometheus Metrics**: `scan --prometheus` emits node_exporter textfile format for Grafana dashboards and alerting
 - **Color-Coded Output**: Red for critical, yellow for medium, green for safe
 
 ### Distribution & Updates
@@ -103,6 +104,44 @@ DockerShield identifies risky exposures including:
 - Plus 40+ other services
 
 [See example output](EXAMPLE_OUTPUT.md)
+
+## 📈 Continuous Monitoring (Prometheus)
+
+DockerShield is strictly read-only — it never changes your system. For continuous
+monitoring, run it from cron and publish metrics through the node_exporter
+[textfile collector](https://github.com/prometheus/node_exporter#textfile-collector):
+
+```bash
+# /etc/cron.d/dockershield — scan every 15 minutes
+*/15 * * * * root dockershield scan --prometheus > /var/lib/node_exporter/textfile/dockershield.prom.$$ && mv /var/lib/node_exporter/textfile/dockershield.prom.$$ /var/lib/node_exporter/textfile/dockershield.prom
+```
+
+Exported metrics: `dockershield_security_score`, `dockershield_risks{severity}`,
+`dockershield_exposed_port{container,port,protocol,severity}`,
+`dockershield_docker_bypassing_ufw`, `dockershield_ufw_active`,
+`dockershield_containers{state}`, `dockershield_last_scan_timestamp_seconds`.
+
+Example Prometheus alert rules:
+
+```yaml
+groups:
+  - name: dockershield
+    rules:
+      - alert: DockerBypassingUFW
+        expr: dockershield_docker_bypassing_ufw == 1
+        for: 5m
+        annotations:
+          summary: "Docker is bypassing UFW on {{ $labels.instance }}"
+      - alert: CriticalPortExposed
+        expr: dockershield_exposed_port{severity="critical"} == 1
+        for: 5m
+        annotations:
+          summary: "{{ $labels.container }} exposes port {{ $labels.port }} publicly on {{ $labels.instance }}"
+      - alert: DockershieldScanStale
+        expr: time() - dockershield_last_scan_timestamp_seconds > 3600
+        annotations:
+          summary: "DockerShield scan has not run for over an hour on {{ $labels.instance }}"
+```
 
 ## 🎯 Why DockerShield?
 

@@ -57,6 +57,11 @@ func (r *JSONReporter) Generate(
 
 // WriteToFile writes JSON output to a file
 func (r *JSONReporter) WriteToFile(data []byte, path string) error {
+	return writeReportFile(data, path)
+}
+
+// writeReportFile writes report data to a relative path with restrictive permissions
+func writeReportFile(data []byte, path string) error {
 	// Validate path to prevent directory traversal
 	cleanPath := filepath.Clean(path)
 

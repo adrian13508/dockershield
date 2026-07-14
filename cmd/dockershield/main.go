@@ -92,7 +92,8 @@ Checks for:
 Example:
   dockershield scan
   dockershield scan --json
-  dockershield scan --output report.json`,
+  dockershield scan --output report.json
+  dockershield scan --prometheus > dockershield.prom`,
 	RunE: runScan,
 }
 
@@ -199,6 +200,7 @@ Example:
 var (
 	// Flags for scan command
 	jsonOutput  bool
+	promOutput  bool
 	outputFile  string
 	verboseMode bool
 )
@@ -226,8 +228,10 @@ var (
 func init() {
 	// Add flags to scan command
 	scanCmd.Flags().BoolVar(&jsonOutput, "json", false, "Output results in JSON format")
+	scanCmd.Flags().BoolVar(&promOutput, "prometheus", false, "Output metrics in Prometheus textfile format (for node_exporter textfile collector)")
 	scanCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write output to file")
 	scanCmd.Flags().BoolVarP(&verboseMode, "verbose", "v", false, "Enable verbose logging")
+	scanCmd.MarkFlagsMutuallyExclusive("json", "prometheus")
 
 	// Add flags to status command
 	statusCmd.Flags().BoolVar(&statusJSON, "json", false, "Output results in JSON format")
@@ -246,8 +250,8 @@ func init() {
 
 // runScan executes the security scan
 func runScan(cmd *cobra.Command, args []string) error {
-	// In JSON mode, suppress progress messages
-	quietMode := jsonOutput
+	// In machine-readable modes, suppress progress messages
+	quietMode := jsonOutput || promOutput
 
 	if !quietMode {
 		fmt.Println("🔍 DockerShield Security Scanner")
@@ -334,6 +338,11 @@ func runScan(cmd *cobra.Command, args []string) error {
 	if jsonOutput {
 		return outputJSON(containers, networks, firewallInfo, sshConfig, fail2banStatus, systemStatus,
 			hardeningStatus, userStatus, rootkitStatus, integrityStatus, logStatus, riskSummary, score)
+	}
+
+	// Handle Prometheus output
+	if promOutput {
+		return outputPrometheus(containers, firewallInfo, riskSummary, score)
 	}
 
 	// Terminal output mode
@@ -448,6 +457,28 @@ func outputJSON(
 		jsonReporter.Print(jsonData)
 	}
 
+	return nil
+}
+
+// outputPrometheus generates and outputs Prometheus textfile format
+func outputPrometheus(
+	containers []models.Container,
+	firewallInfo *models.FirewallInfo,
+	riskSummary models.RiskSummary,
+	score int,
+) error {
+	promReporter := reporter.NewPrometheusReporter()
+	data := promReporter.Generate(containers, firewallInfo, riskSummary, score)
+
+	if outputFile != "" {
+		if err := promReporter.WriteToFile(data, outputFile); err != nil {
+			return err
+		}
+		fmt.Fprintf(os.Stderr, "✓ Metrics saved to %s\n", outputFile)
+		return nil
+	}
+
+	promReporter.Print(data)
 	return nil
 }
 

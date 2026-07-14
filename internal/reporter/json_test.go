@@ -109,8 +109,8 @@ func TestJSONGeneration(t *testing.T) {
 func TestJSONWriteToFile(t *testing.T) {
 	reporter := NewJSONReporter()
 
-	// Create temporary file
-	tmpFile := "/tmp/dockershield_test_output.json"
+	// WriteToFile rejects absolute paths, so use a relative one
+	tmpFile := "dockershield_test_output.json"
 	defer os.Remove(tmpFile) // Clean up after test
 
 	jsonData := []byte(`{"test": "data"}`)

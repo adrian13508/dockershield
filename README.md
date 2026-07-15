@@ -86,6 +86,7 @@ dockershield upgrade
 - **Actionable Recommendations**: Get exact commands to fix security issues
 - **JSON Output**: Machine-readable format for CI/CD and automation
 - **Prometheus Metrics**: `scan --prometheus` emits node_exporter textfile format for Grafana dashboards and alerting
+- **CI-Friendly Exit Codes**: `scan --fail-on critical` exits with code 2 when critical findings exist — gate deploys or trigger alerts from any script
 - **Color-Coded Output**: Red for critical, yellow for medium, green for safe
 
 ### Distribution & Updates
@@ -141,6 +142,12 @@ groups:
         expr: time() - dockershield_last_scan_timestamp_seconds > 3600
         annotations:
           summary: "DockerShield scan has not run for over an hour on {{ $labels.instance }}"
+```
+
+No Prometheus? The `--fail-on` flag turns any cron job into an alert:
+
+```bash
+dockershield scan --fail-on critical > /dev/null || curl -s -d "DockerShield: critical exposure on $(hostname)" ntfy.sh/your-topic
 ```
 
 ## 🎯 Why DockerShield?

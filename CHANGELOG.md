@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `scan --fail-on <severity>` exits with code 2 when findings at or above the given severity exist (critical, high, medium, low) — enables alerting from cron/CI with no extra tooling
+
 ### Planned
 - nginx/Apache domain checker
 - State persistence and change detection

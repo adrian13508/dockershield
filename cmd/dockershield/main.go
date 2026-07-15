@@ -93,7 +93,8 @@ Example:
   dockershield scan
   dockershield scan --json
   dockershield scan --output report.json
-  dockershield scan --prometheus > dockershield.prom`,
+  dockershield scan --prometheus > dockershield.prom
+  dockershield scan --fail-on critical`,
 	RunE: runScan,
 }
 
@@ -203,6 +204,7 @@ var (
 	promOutput  bool
 	outputFile  string
 	verboseMode bool
+	failOn      string
 )
 
 var (
@@ -231,6 +233,7 @@ func init() {
 	scanCmd.Flags().BoolVar(&promOutput, "prometheus", false, "Output metrics in Prometheus textfile format (for node_exporter textfile collector)")
 	scanCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write output to file")
 	scanCmd.Flags().BoolVarP(&verboseMode, "verbose", "v", false, "Enable verbose logging")
+	scanCmd.Flags().StringVar(&failOn, "fail-on", "", "Exit with code 2 when findings at or above this severity exist (critical, high, medium, low)")
 	scanCmd.MarkFlagsMutuallyExclusive("json", "prometheus")
 
 	// Add flags to status command
@@ -250,6 +253,13 @@ func init() {
 
 // runScan executes the security scan
 func runScan(cmd *cobra.Command, args []string) error {
+	// Validate --fail-on before doing any work
+	switch failOn {
+	case "", "critical", "high", "medium", "low":
+	default:
+		return fmt.Errorf("invalid --fail-on value %q (valid: critical, high, medium, low)", failOn)
+	}
+
 	// In machine-readable modes, suppress progress messages
 	quietMode := jsonOutput || promOutput
 
@@ -336,13 +346,21 @@ func runScan(cmd *cobra.Command, args []string) error {
 
 	// Handle JSON output
 	if jsonOutput {
-		return outputJSON(containers, networks, firewallInfo, sshConfig, fail2banStatus, systemStatus,
-			hardeningStatus, userStatus, rootkitStatus, integrityStatus, logStatus, riskSummary, score)
+		if err := outputJSON(containers, networks, firewallInfo, sshConfig, fail2banStatus, systemStatus,
+			hardeningStatus, userStatus, rootkitStatus, integrityStatus, logStatus, riskSummary, score); err != nil {
+			return err
+		}
+		exitOnFindings(riskSummary)
+		return nil
 	}
 
 	// Handle Prometheus output
 	if promOutput {
-		return outputPrometheus(containers, firewallInfo, riskSummary, score)
+		if err := outputPrometheus(containers, firewallInfo, riskSummary, score); err != nil {
+			return err
+		}
+		exitOnFindings(riskSummary)
+		return nil
 	}
 
 	// Terminal output mode
@@ -407,7 +425,35 @@ func runScan(cmd *cobra.Command, args []string) error {
 	// Check for updates notification
 	checkForUpdatesNotification()
 
+	exitOnFindings(riskSummary)
 	return nil
+}
+
+// exitOnFindings terminates with exit code 2 when --fail-on is set and
+// findings at or above that severity exist
+func exitOnFindings(summary models.RiskSummary) {
+	if failOn != "" && findingsAtOrAbove(summary, failOn) > 0 {
+		os.Exit(2)
+	}
+}
+
+// findingsAtOrAbove counts findings at or above the given severity
+func findingsAtOrAbove(summary models.RiskSummary, severity string) int {
+	count := 0
+	switch severity {
+	case "low":
+		count += summary.Low
+		fallthrough
+	case "medium":
+		count += summary.Medium
+		fallthrough
+	case "high":
+		count += summary.High
+		fallthrough
+	case "critical":
+		count += summary.Critical
+	}
+	return count
 }
 
 // outputJSON generates and outputs JSON format

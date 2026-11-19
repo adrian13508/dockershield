@@ -23,6 +23,9 @@ DockerShield is written by one person, with AI coding tools.
 - An integration test in CI starts the deliberately misconfigured containers in
   `test/exposed/compose.yml`, runs the built scanner and checks the findings. It then
   starts `compose.fixed.yml` and checks that the findings are gone.
+- `probe` is tested against local fake servers for each protocol it recognises, and in
+  the integration test against the real PostgreSQL and nginx containers. It was also run
+  between two containers on a dual-stack network, with one port blocked for IPv4 only.
 - The example output in the README and in `EXAMPLE_OUTPUT.md` is copied from such a run,
   not written by hand.
 - The install script was run against a real release, and against a release with a

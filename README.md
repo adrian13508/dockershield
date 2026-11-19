@@ -10,11 +10,12 @@ with `-p 5432:5432` is reachable from outside even when UFW says it is denied
 DockerShield is a read-only command-line scanner that lists which container ports are
 published and on which addresses, checks whether UFW or the `DOCKER-USER` chain filters
 them, and audits a few host settings such as the SSH configuration.
-It does not change any configuration, it does not fix anything, and it does not test
-whether a port is actually reachable from the internet.
+It does not change any configuration and it does not fix anything. A scan on the server
+cannot tell whether a port is reachable from the internet; for that, the separate
+`probe` command connects to the ports from another machine.
 
 > This README describes the `main` branch. The latest release is v0.1.3 and predates
-> the findings list, the IPv6 checks and the checksum-verified `upgrade` described here.
+> the findings list, the IPv6 checks, `probe` and the checksum-verified `upgrade` described here.
 > See [CHANGELOG.md](CHANGELOG.md).
 
 ## Example
@@ -129,9 +130,66 @@ dockershield check firewall                # one category: ports, networks, fire
 dockershield doctor                        # checks that the scanner's own requirements are met
 dockershield version --check               # asks GitHub whether a newer release exists
 dockershield upgrade                       # replaces the binary with the latest release
+dockershield probe HOST --from-report report.json   # from another machine, see below
 ```
 
 `-o` accepts relative paths only. For an absolute path, redirect stdout.
+
+## Checking from outside: probe
+
+A scan shows what the server publishes. It cannot see a provider firewall or a rule in
+`DOCKER-USER` that happens to cover the port. `probe` connects to the ports from another
+machine and reports what answers.
+
+```bash
+# on the server
+sudo dockershield scan --json > report.json
+
+# on a different machine, after copying report.json there
+dockershield probe my-server.example.com --from-report report.json --i-own-this-host
+```
+
+Output from the test setup, after PostgreSQL was blocked for IPv4 only (full run in
+[EXAMPLE_OUTPUT.md](EXAMPLE_OUTPUT.md)):
+
+```
+5432/tcp  (container dockershield-test-db-1; expected PostgreSQL; bound on 0.0.0.0, ::)
+  192.168.0.2                             published but blocked on the way (no answer)
+  fd00:d5:d5::2                           published and confirmed from outside: PostgreSQL, answered the SSL negotiation request
+```
+
+**Only probe servers you own or are authorized to test.** Connecting to ports of other
+people's systems may be illegal. The first probe of a host is refused unless you pass
+`--i-own-this-host`; the confirmation is remembered per host in
+`~/.dockershield/probe_hosts`.
+
+What it does:
+
+- Resolves the host and probes every address, IPv4 and IPv6 separately (`-4` or `-6` to
+  pick one).
+- Opens one TCP connection per port and address. `open` means the connection was
+  established, `closed` means it was refused, `filtered` means no answer within the
+  timeout.
+- Waits up to 1.5 s for a banner the server sends on its own (SSH, MySQL, SMTP, FTP, VNC).
+- If there is none and the port is expected to be PostgreSQL, Redis or HTTP, sends one
+  message: an SSL negotiation request, `PING`, or `HEAD / HTTP/1.0`. Nothing is sent to
+  a port whose expected service is unknown. It never sends credentials.
+
+Which ports:
+
+| Option | Ports |
+|--------|-------|
+| none | the 38 ports of the scanner's table |
+| `--from-report report.json` | TCP ports the scan found published on all interfaces or on a public address |
+| `--ports 22,5432` | the listed ports |
+
+Limits: one host per run, no ranges, at most 200 ports, at most 32 connections at a time
+(default 10), timeout at most 30 s (default 3 s). `--json` prints the results as JSON.
+`--fail-on-open` exits with code 2 if any probed port is open.
+
+The result is the view from the machine that ran the probe. A firewall may treat another
+network differently. A hosted variant that needs no second machine is described in
+[DESIGN-hosted-probe.md](DESIGN-hosted-probe.md). It is not built.
 
 ## How it works
 
@@ -213,12 +271,14 @@ audit":
   and `journalctl --since "24 hours ago"` at priorities err, warning and crit
 
 **Network access.** `scan`, `status`, `check` and `doctor` make no network requests.
+`probe` connects to the host you name.
 `version --check` contacts the GitHub API. `upgrade` contacts the GitHub API, downloads
 the release archive and `checksums.txt`, and replaces the binary only if the SHA256
 matches. There is no telemetry.
 
 **Files written.** Each scan writes `~/.dockershield/state.json` so that `status` can
-read it. `-o` writes the file you name. Nothing else is written.
+read it. `-o` writes the file you name. `probe` appends confirmed hosts to
+`~/.dockershield/probe_hosts`. Nothing else is written.
 
 ## Output formats
 
@@ -286,9 +346,12 @@ dockershield scan --fail-on critical > /dev/null || curl -s -d "critical exposur
 
 ## Limitations
 
-- **"Published on all interfaces" is not "reachable from the internet".** The scanner
+- **"Published on all interfaces" is not "reachable from the internet".** The scan
   does not know about a provider firewall, a security group, NAT, or whether the host
-  has a public address at all.
+  has a public address at all. Use `probe` from another machine to find out.
+- **`probe` sees one vantage point, TCP only.** It identifies a service only when the
+  server sends a banner or the expected service is PostgreSQL, Redis or HTTP. TLS ports
+  are reported as open without identification.
 - **`DOCKER-USER` rules are detected, not evaluated.** One `DROP` rule anywhere in the
   chain is enough for the scanner to stop reporting the UFW bypass, even if that rule
   does not cover the published ports.
@@ -315,7 +378,7 @@ dockershield scan --fail-on critical > /dev/null || curl -s -d "critical exposur
 
 ## Comparison
 
-| | DockerShield | [ufw-docker](https://github.com/chaifeng/ufw-docker) | External port scanner (for example nmap from another machine) |
+| | DockerShield `scan` | [ufw-docker](https://github.com/chaifeng/ufw-docker) | External port scanner (for example nmap from another machine) |
 |---|---|---|---|
 | Runs on | the Docker host | the Docker host | a different machine |
 | Changes the system | no | yes: adds rules to `/etc/ufw/after.rules` that filter traffic in the `DOCKER-USER` chain | no |
@@ -327,8 +390,9 @@ dockershield scan --fail-on critical > /dev/null || curl -s -d "critical exposur
 
 The tools answer different questions. ufw-docker changes the firewall so that UFW rules
 apply to published ports. An external scan shows what an outside client can connect to.
-DockerShield shows what the host is configured to publish and which container is
-responsible.
+DockerShield `scan` shows what the host is configured to publish and which container is
+responsible. `dockershield probe --from-report` is an external check limited to the
+ports the scan reported, and prints both views side by side.
 
 ## Background
 

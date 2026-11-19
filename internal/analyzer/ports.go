@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 
 	"github.com/adrian13508/dockershield/pkg/models"
@@ -136,4 +137,14 @@ func IsHighRiskPort(portNum int) bool {
 		return false
 	}
 	return info.BaseRisk == models.RiskCritical || info.BaseRisk == models.RiskHigh
+}
+
+// KnownPorts returns the port numbers in the table, sorted
+func KnownPorts() []int {
+	ports := make([]int, 0, len(dangerousPorts))
+	for port := range dangerousPorts {
+		ports = append(ports, port)
+	}
+	sort.Ints(ports)
+	return ports
 }

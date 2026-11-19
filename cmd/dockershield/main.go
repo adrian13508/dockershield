@@ -57,6 +57,8 @@ DockerShield performs security audits of your VPS including:
 Perfect for indie developers and small teams running self-hosted applications.`,
 	// Don't show usage on errors
 	SilenceUsage: true,
+	// main prints the error once; without this cobra prints it a second time
+	SilenceErrors: true,
 }
 
 func init() {

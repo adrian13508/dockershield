@@ -21,6 +21,8 @@ time and no bug bounty. The project has not had an external security audit.
 - It needs the Docker socket. Access to the Docker socket is equivalent to root on the host.
 - The firewall and host checks need root. The README section "How it works" lists every
   command that is run and every file that is read.
+- `probe` connects to TCP ports of the host you name, and only after you confirm with
+  `--i-own-this-host` that the host is yours. It sends no credentials.
 - `scan`, `status`, `check` and `doctor` make no network requests. `upgrade` and
   `version --check` contact GitHub. Releases up to and including v0.1.3 also
   contacted GitHub at the end of every text-mode scan.

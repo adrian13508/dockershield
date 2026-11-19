@@ -87,6 +87,10 @@ func find(findings []models.Finding, id, service string) *models.Finding {
 	return nil
 }
 
+// exposedReport is the JSON report of the misconfigured project, kept for the
+// before/after comparison in TestFixedServices
+var exposedReport []byte
+
 func TestExposedServices(t *testing.T) {
 	up(t, "compose.yml")
 	result := scan(t)
@@ -148,6 +152,29 @@ func TestExposedServices(t *testing.T) {
 	if err := os.WriteFile(reportFile, data, 0600); err != nil {
 		t.Fatal(err)
 	}
+	exposedReport = data
+
+	// scan --report writes one HTML file and still prints the JSON
+	htmlFile := filepath.Join(t.TempDir(), "report.html")
+	if code := exitCode(t, "scan", "--json", "--report", htmlFile); code != 0 {
+		t.Errorf("scan --report exit code = %d, want 0", code)
+	}
+	html, err := os.ReadFile(htmlFile)
+	if err != nil {
+		t.Fatalf("scan --report wrote no file: %v", err)
+	}
+	if !strings.Contains(string(html), "PostgreSQL published on all interfaces") || strings.Contains(string(html), "<script") {
+		t.Errorf("HTML report lacks the PostgreSQL finding or contains a script")
+	}
+
+	// The waitlist line belongs to text output only, and --quiet removes it
+	for args, want := range map[string]bool{"scan": true, "scan --quiet": false, "scan --json": false, "scan --prometheus": false} {
+		out, _ := exec.Command(bin(t), strings.Fields(args)...).Output()
+		if got := strings.Contains(string(out), "Waitlist:"); got != want {
+			t.Errorf("%q: waitlist line present = %v, want %v", args, got, want)
+		}
+	}
+
 	t.Setenv("HOME", t.TempDir())
 	if code := exitCode(t, "probe", "127.0.0.1", "--from-report", reportFile); code != 1 {
 		t.Errorf("probe without --i-own-this-host exit code = %d, want 1", code)
@@ -221,6 +248,32 @@ func TestFixedServices(t *testing.T) {
 	if result.RiskSummary.Critical != 0 || result.RiskSummary.High != 0 {
 		t.Errorf("risk_summary = %+v, want no critical or high", result.RiskSummary)
 	}
+	// compare: every finding of the test project is listed as resolved
+	if exposedReport != nil {
+		dir := t.TempDir()
+		before, after := filepath.Join(dir, "before.json"), filepath.Join(dir, "after.json")
+		data, err := json.Marshal(result)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(before, exposedReport, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(after, data, 0600); err != nil {
+			t.Fatal(err)
+		}
+		out, err := exec.Command(bin(t), "compare", before, after, "--fail-on-new").Output()
+		if err != nil {
+			t.Fatalf("compare failed: %v\n%s", err, out)
+		}
+		if !strings.Contains(string(out), "Resolved (4)") || !strings.Contains(string(out), "New (0)") {
+			t.Errorf("compare output:\n%s", out)
+		}
+		if code := exitCode(t, "compare", after, before, "--fail-on-new"); code != 2 {
+			t.Errorf("compare --fail-on-new exit code = %d, want 2 when findings appear", code)
+		}
+	}
+
 	// "high", not "medium": the host itself may have medium findings
 	// (a Docker-in-Docker daemon listens on TCP with TLS)
 	if code := exitCode(t, "scan", "--json", "--fail-on", "high"); code != 0 {

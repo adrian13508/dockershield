@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI workflow: gofmt, `go vet`, `go test -race`, golangci-lint, shellcheck on every pull request
 - Issue templates, `HOW_THIS_IS_BUILT.md`, test environment in `test/exposed/compose.yml`
 
+### Added (project)
+- `site/`: static project page for GitHub Pages with a waitlist form for a planned team version
+- `metrics.sh` and a daily workflow that append stars, forks, release downloads and 14-day traffic to `metrics.csv` on the `metrics` branch. The tool itself still reports nothing
+
 ### Added (reports)
 - `scan --report report.html`: self-contained HTML report (inline CSS, no scripts, no external resources) with score, findings in priority order, fixes, published ports and firewall checks. Prints to PDF
 - `compare before.json after.json`: resolved, new and remaining findings between two JSON reports; `--fail-on-new` for CI

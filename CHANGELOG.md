@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI workflow: gofmt, `go vet`, `go test -race`, golangci-lint, shellcheck on every pull request
 - Issue templates, `HOW_THIS_IS_BUILT.md`, test environment in `test/exposed/compose.yml`
 
+### Added (probe)
+- `probe <host>`: run from another machine, connects to TCP ports of a host you own and reports open, closed or filtered per address, IPv4 and IPv6 separately
+- `probe --from-report report.json` checks exactly the ports a scan found published and prints both views: "published and confirmed from outside" or "published but blocked on the way"
+- Service identification from banners (SSH, MySQL, SMTP, FTP, VNC) and one minimal unauthenticated handshake for PostgreSQL, Redis and HTTP. No login attempts
+- Refuses to run for a host until `--i-own-this-host` has been passed once. Limits: one host, 200 ports, 32 concurrent connections, 30 s timeout
+- `DESIGN-hosted-probe.md`: design for a hosted probe that checks only the requester's own address. Not built
+
 ### Added (detection)
 - `findings[]` in JSON and a "Findings and fixes" section in text output: every result rated medium or above, sorted by severity, each with a concrete fix (compose snippet or command)
 - `address_scope` on each port binding: `all_interfaces`, `localhost`, `private_or_vpn`, `public_address`
@@ -55,6 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `fail2ban-client` was called through `sudo` without `-n` and could prompt for a password
 - "Is Docker running?" was shown when the real problem was missing permission for the Docker socket
 - Order of bindings and findings in the output is now stable
+- Errors were printed twice
 - `go.mod` listed direct dependencies as indirect
 - Release workflow used a Go version older than the one in `go.mod`
 

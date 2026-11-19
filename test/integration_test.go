@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/adrian13508/dockershield/pkg/models"
 )
@@ -135,6 +136,59 @@ func TestExposedServices(t *testing.T) {
 
 	if code := exitCode(t, "scan", "--json", "--fail-on", "critical"); code != 2 {
 		t.Errorf("scan --fail-on critical exit code = %d, want 2", code)
+	}
+
+	// probe, pointed at this machine, must confirm what the scan reported.
+	// (In real use probe runs on a different machine; the logic is the same.)
+	reportFile := filepath.Join(t.TempDir(), "report.json")
+	data, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(reportFile, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOME", t.TempDir())
+	if code := exitCode(t, "probe", "127.0.0.1", "--from-report", reportFile); code != 1 {
+		t.Errorf("probe without --i-own-this-host exit code = %d, want 1", code)
+	}
+	var probed struct {
+		Results []struct {
+			Port    int    `json:"port"`
+			State   string `json:"state"`
+			Service string `json:"service"`
+			Verdict string `json:"verdict"`
+		} `json:"results"`
+	}
+	deadline := time.Now().Add(60 * time.Second) // PostgreSQL needs a moment to start
+	for {
+		out, err := exec.Command(bin(t), "probe", "127.0.0.1", "--from-report", reportFile, "--i-own-this-host", "--json").Output()
+		if err != nil {
+			t.Fatalf("probe failed: %v", err)
+		}
+		if err := json.Unmarshal(out, &probed); err != nil {
+			t.Fatalf("probe --json: %v\n%s", err, out)
+		}
+		identified := false
+		for _, r := range probed.Results {
+			if r.Port == 5432 && r.Service == "PostgreSQL" && r.Verdict == "published and confirmed from outside" {
+				identified = true
+			}
+		}
+		if identified {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("probe did not confirm PostgreSQL on 5432: %+v", probed.Results)
+		}
+		time.Sleep(2 * time.Second)
+	}
+	ports := map[int]bool{}
+	for _, r := range probed.Results {
+		ports[r.Port] = true
+	}
+	if !ports[9000] || !ports[8080] || ports[6379] {
+		t.Errorf("probe must cover the published ports (5432, 8080, 9000) and not the localhost one (6379): %+v", probed.Results)
 	}
 
 	// `check ports` must rate ports too (it used to report everything as info)

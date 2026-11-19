@@ -250,6 +250,90 @@ dockershield_last_scan_timestamp_seconds 1795079277
 
 See [example_report.json](example_report.json), produced by the first run.
 
+## `dockershield probe`
+
+Two containers on one Docker network stand in for two machines: `ds-server` runs the
+test services, the probe runs in the other one. The network has IPv4 and IPv6.
+
+Without confirmation the command refuses:
+
+```
+$ dockershield probe ds-server --from-report report.json
+refusing to probe ds-server without confirmation.
+
+probe opens connections to ports on that host. Only do this for servers you
+own or are authorized to test; probing other people's systems may be illegal.
+
+If ds-server is yours, run the command again with --i-own-this-host.
+This is asked once per host and remembered in /root/.dockershield/probe_hosts
+```
+
+With the scan report from the server (`--from-report report.json --i-own-this-host`):
+
+```
+Probing ds-server (192.168.0.2, fd00:d5:d5::2) from this machine
+3 port(s), timeout 3s, up to 10 connections at a time
+
+5432/tcp  (container dockershield-test-db-1; expected PostgreSQL; bound on 0.0.0.0, ::)
+  192.168.0.2                             published and confirmed from outside: PostgreSQL, answered the SSL negotiation request
+  fd00:d5:d5::2                           published and confirmed from outside: PostgreSQL, answered the SSL negotiation request
+8080/tcp  (container dockershield-test-web-1; expected HTTP; bound on 0.0.0.0, ::)
+  192.168.0.2                             published and confirmed from outside: HTTP, "HTTP/1.1 200 OK nginx/1.31.9"
+  fd00:d5:d5::2                           published and confirmed from outside: HTTP, "HTTP/1.1 200 OK nginx/1.31.9"
+9000/tcp  (container dockershield-test-admin-1; expected Portainer; bound on 0.0.0.0, ::)
+  192.168.0.2                             published and confirmed from outside: HTTP, "HTTP/1.1 200 OK nginx/1.31.9"
+  fd00:d5:d5::2                           published and confirmed from outside: HTTP, "HTTP/1.1 200 OK nginx/1.31.9"
+
+6 open, 0 closed, 0 filtered
+
+This is the view from this machine only. Another network may be treated differently by a firewall.
+```
+
+Then, on the server, PostgreSQL was blocked for IPv4 only:
+`iptables -I DOCKER-USER -p tcp --dport 5432 -j DROP`. A new scan on the server reports
+the finding `ipv6_unfiltered`, and the probe shows why:
+
+```
+Probing ds-server (192.168.0.2, fd00:d5:d5::2) from this machine
+3 port(s), timeout 3s, up to 10 connections at a time
+
+5432/tcp  (container dockershield-test-db-1; expected PostgreSQL; bound on 0.0.0.0, ::)
+  192.168.0.2                             published but blocked on the way (no answer)
+  fd00:d5:d5::2                           published and confirmed from outside: PostgreSQL, answered the SSL negotiation request
+8080/tcp  (container dockershield-test-web-1; expected HTTP; bound on 0.0.0.0, ::)
+  192.168.0.2                             published and confirmed from outside: HTTP, "HTTP/1.1 200 OK nginx/1.31.9"
+  fd00:d5:d5::2                           published and confirmed from outside: HTTP, "HTTP/1.1 200 OK nginx/1.31.9"
+9000/tcp  (container dockershield-test-admin-1; expected Portainer; bound on 0.0.0.0, ::)
+  192.168.0.2                             published and confirmed from outside: HTTP, "HTTP/1.1 200 OK nginx/1.31.9"
+  fd00:d5:d5::2                           published and confirmed from outside: HTTP, "HTTP/1.1 200 OK nginx/1.31.9"
+
+5 open, 0 closed, 1 filtered
+
+This is the view from this machine only. Another network may be treated differently by a firewall.
+```
+
+Without a report, IPv4 only (`dockershield probe ds-server -4`). Port 80 belongs to the
+container with host networking, which the scan cannot list:
+
+```
+Probing ds-server (192.168.0.2) from this machine
+38 port(s), timeout 3s, up to 10 connections at a time
+
+80/tcp  (expected HTTP)
+  192.168.0.2                             open: HTTP, "HTTP/1.1 200 OK nginx/1.31.9"
+2376/tcp  (expected Docker)
+  192.168.0.2                             open: HTTP, "HTTP/1.0 400 Bad Request"
+8080/tcp  (expected HTTP Alt)
+  192.168.0.2                             open: HTTP, "HTTP/1.1 200 OK nginx/1.31.9"
+9000/tcp  (expected Portainer)
+  192.168.0.2                             open: HTTP, "HTTP/1.1 200 OK nginx/1.31.9"
+
+4 open, 33 closed, 1 filtered
+Closed and filtered ports are not listed. Use --all to see them.
+
+This is the view from this machine only. Another network may be treated differently by a firewall.
+```
+
 ## Exit code
 
 `dockershield scan --fail-on critical` exits with code 2 in the first environment.

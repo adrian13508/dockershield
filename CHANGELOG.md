@@ -59,7 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The rootkit check no longer runs `rkhunter --versioncheck` (a network request). The JSON field `database_version` is now omitted
 - README rewritten: statistics without a source removed, added "How it works", "Limitations" and a comparison with other tools
 - `EXAMPLE_OUTPUT.md` and `example_report.json` replaced with output from a real run
-- SECURITY.md: corrected the claim that `upgrade` verifies checksums (it does not); new contact address
+- SECURITY.md: described what is and is not verified on install and upgrade; new contact address
 - `install.sh` uses `mktemp -d` instead of a predictable directory in `/tmp`
 
 ### Fixed

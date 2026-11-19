@@ -1,13 +1,52 @@
 {
-  "timestamp": "2025-11-06T23:00:00Z",
-  "hostname": "prod-vps-1",
+  "timestamp": "2026-11-19T08:46:30.099872971Z",
+  "hostname": "test-vps",
   "containers": [
     {
-      "id": "abc123456789",
-      "name": "postgres_db",
-      "image": "postgres:15",
+      "id": "5949bd946dd4",
+      "name": "dockershield-test-web-1",
+      "image": "nginx:alpine",
       "state": "running",
-      "network_mode": "bridge",
+      "network_mode": "dockershield-test_default",
+      "ports": [
+        {
+          "host_ip": "0.0.0.0",
+          "host_port": "8080",
+          "container_port": "80",
+          "protocol": "tcp",
+          "exposure_type": "public",
+          "risk_level": "medium",
+          "risk_reason": "HTTP exposed to public internet"
+        },
+        {
+          "host_ip": "::",
+          "host_port": "8080",
+          "container_port": "80",
+          "protocol": "tcp",
+          "exposure_type": "public",
+          "risk_level": "medium",
+          "risk_reason": "HTTP exposed to public internet"
+        }
+      ],
+      "networks": [
+        "dockershield-test_default"
+      ],
+      "highest_risk": "medium",
+      "risk_count": {
+        "critical": 0,
+        "high": 0,
+        "medium": 2,
+        "low": 0,
+        "info": 0
+      },
+      "created_at": "0001-01-01T00:00:00Z"
+    },
+    {
+      "id": "74b5f2db4fda",
+      "name": "dockershield-test-db-1",
+      "image": "postgres:16-alpine",
+      "state": "running",
+      "network_mode": "dockershield-test_default",
       "ports": [
         {
           "host_ip": "0.0.0.0",
@@ -17,27 +56,36 @@
           "exposure_type": "public",
           "risk_level": "critical",
           "risk_reason": "PostgreSQL exposed to public internet"
+        },
+        {
+          "host_ip": "::",
+          "host_port": "5432",
+          "container_port": "5432",
+          "protocol": "tcp",
+          "exposure_type": "public",
+          "risk_level": "critical",
+          "risk_reason": "PostgreSQL exposed to public internet"
         }
       ],
       "networks": [
-        "bridge"
+        "dockershield-test_default"
       ],
       "highest_risk": "critical",
       "risk_count": {
-        "critical": 1,
+        "critical": 2,
         "high": 0,
         "medium": 0,
         "low": 0,
         "info": 0
       },
-      "created_at": "2025-11-01T10:30:00Z"
+      "created_at": "0001-01-01T00:00:00Z"
     },
     {
-      "id": "def987654321",
-      "name": "redis_cache",
-      "image": "redis:7",
+      "id": "7e07aee5178b",
+      "name": "dockershield-test-cache-1",
+      "image": "redis:7-alpine",
       "state": "running",
-      "network_mode": "bridge",
+      "network_mode": "dockershield-test_default",
       "ports": [
         {
           "host_ip": "127.0.0.1",
@@ -50,7 +98,7 @@
         }
       ],
       "networks": [
-        "bridge"
+        "dockershield-test_default"
       ],
       "highest_risk": "low",
       "risk_count": {
@@ -60,77 +108,621 @@
         "low": 1,
         "info": 0
       },
-      "created_at": "2025-11-01T10:35:00Z"
-    },
-    {
-      "id": "ghi111222333",
-      "name": "nginx_web",
-      "image": "nginx:alpine",
-      "state": "running",
-      "network_mode": "bridge",
-      "ports": [
-        {
-          "host_ip": "0.0.0.0",
-          "host_port": "80",
-          "container_port": "80",
-          "protocol": "tcp",
-          "exposure_type": "public",
-          "risk_level": "medium",
-          "risk_reason": "HTTP exposed to public internet"
-        },
-        {
-          "host_ip": "0.0.0.0",
-          "host_port": "443",
-          "container_port": "443",
-          "protocol": "tcp",
-          "exposure_type": "public",
-          "risk_level": "medium",
-          "risk_reason": "HTTPS exposed to public internet"
-        }
-      ],
-      "networks": [
-        "web_network"
-      ],
-      "highest_risk": "medium",
-      "risk_count": {
-        "critical": 0,
-        "high": 0,
-        "medium": 2,
-        "low": 0,
-        "info": 0
-      },
-      "created_at": "2025-11-01T10:40:00Z"
+      "created_at": "0001-01-01T00:00:00Z"
     }
   ],
   "networks": [
     {
-      "id": "net123456789",
-      "name": "bridge",
-      "driver": "bridge",
-      "subnet": "172.17.0.0/16",
-      "gateway": "172.17.0.1",
-      "containers": [
-        "abc123456789",
-        "def987654321"
-      ]
+      "id": "20d0a40dc15f",
+      "name": "none",
+      "driver": "null",
+      "subnet": "",
+      "gateway": "",
+      "containers": null
     },
     {
-      "id": "net987654321",
-      "name": "web_network",
+      "id": "2af87da866db",
+      "name": "host",
+      "driver": "host",
+      "subnet": "",
+      "gateway": "",
+      "containers": null
+    },
+    {
+      "id": "b070dcdb689c",
+      "name": "bridge",
       "driver": "bridge",
       "subnet": "172.18.0.0/16",
       "gateway": "172.18.0.1",
+      "containers": null
+    },
+    {
+      "id": "ef08c2834f6a",
+      "name": "dockershield-test_default",
+      "driver": "bridge",
+      "subnet": "172.19.0.0/16",
+      "gateway": "172.19.0.1",
       "containers": [
-        "ghi111222333"
+        "5949bd946dd4",
+        "74b5f2db4fda",
+        "7e07aee5178b"
       ]
     }
   ],
+  "firewall": {
+    "ufw_active": false,
+    "docker_detected": true,
+    "docker_bypassing_ufw": false,
+    "docker_chains": [
+      "DOCKER-USER",
+      "DOCKER",
+      "DOCKER-BRIDGE",
+      "DOCKER-CT",
+      "DOCKER-FORWARD",
+      "DOCKER-INTERNAL"
+    ]
+  },
+  "security_checks": {
+    "ssh": {
+      "config_file": "/etc/ssh/sshd_config",
+      "port": 22,
+      "permit_root_login": "unknown",
+      "password_authentication": "unknown",
+      "pubkey_authentication": "unknown",
+      "permit_empty_passwords": "unknown",
+      "challenge_response_auth": "unknown",
+      "issues": [
+        {
+          "severity": "HIGH",
+          "issue": "SSH config file not found: /etc/ssh/sshd_config",
+          "recommendation": "SSH server may not be installed or config is in non-standard location"
+        }
+      ],
+      "risk_level": "HIGH",
+      "security_score": 50
+    },
+    "fail2ban": {
+      "installed": false,
+      "running": false,
+      "total_banned": 0,
+      "recommendations": [
+        "Install fail2ban: sudo apt install fail2ban",
+        "Enable fail2ban: sudo systemctl enable fail2ban",
+        "Start fail2ban: sudo systemctl start fail2ban"
+      ],
+      "risk_level": "HIGH"
+    },
+    "system": {
+      "last_update": "0001-01-01T00:00:00Z",
+      "days_since_update": 0,
+      "updates_available": 0,
+      "security_updates": 0,
+      "kernel_version": "7.0.14-linuxkit",
+      "os_version": "Alpine Linux v3.24",
+      "auto_updates_enabled": false,
+      "reboot_required": false,
+      "issues": [
+        {
+          "severity": "MEDIUM",
+          "issue": "Automatic security updates not enabled",
+          "recommendation": "Enable unattended-upgrades: 'sudo apt install unattended-upgrades \u0026\u0026 sudo dpkg-reconfigure -plow unattended-upgrades'"
+        }
+      ],
+      "risk_level": "LOW"
+    },
+    "hardening": {
+      "sysctl_checks": [
+        {
+          "parameter": "net.ipv4.conf.default.accept_source_route",
+          "current_value": "1",
+          "recommended_value": "0",
+          "compliant": false,
+          "severity": "HIGH",
+          "description": "Disable source packet routing on new interfaces"
+        },
+        {
+          "parameter": "net.ipv4.conf.default.secure_redirects",
+          "current_value": "1",
+          "recommended_value": "0",
+          "compliant": false,
+          "severity": "MEDIUM",
+          "description": "Disable secure ICMP redirects on new interfaces"
+        },
+        {
+          "parameter": "net.ipv4.conf.all.log_martians",
+          "current_value": "0",
+          "recommended_value": "1",
+          "compliant": false,
+          "severity": "LOW",
+          "description": "Log suspicious packets (martian packets)"
+        },
+        {
+          "parameter": "net.ipv4.conf.default.log_martians",
+          "current_value": "0",
+          "recommended_value": "1",
+          "compliant": false,
+          "severity": "LOW",
+          "description": "Log suspicious packets on new interfaces"
+        },
+        {
+          "parameter": "kernel.dmesg_restrict",
+          "current_value": "1",
+          "recommended_value": "1",
+          "compliant": true,
+          "severity": "MEDIUM",
+          "description": "Restrict dmesg access to root only"
+        },
+        {
+          "parameter": "fs.suid_dumpable",
+          "current_value": "0",
+          "recommended_value": "0",
+          "compliant": true,
+          "severity": "HIGH",
+          "description": "Disable core dumps for SUID programs (prevents info leakage)"
+        },
+        {
+          "parameter": "fs.protected_symlinks",
+          "current_value": "1",
+          "recommended_value": "1",
+          "compliant": true,
+          "severity": "MEDIUM",
+          "description": "Protect symlinks from exploitation"
+        },
+        {
+          "parameter": "net.ipv4.conf.default.send_redirects",
+          "current_value": "1",
+          "recommended_value": "0",
+          "compliant": false,
+          "severity": "MEDIUM",
+          "description": "Disable sending ICMP redirects on new interfaces"
+        },
+        {
+          "parameter": "net.ipv4.conf.all.rp_filter",
+          "current_value": "0",
+          "recommended_value": "1",
+          "compliant": false,
+          "severity": "HIGH",
+          "description": "Enable reverse path filtering (anti-spoofing)"
+        },
+        {
+          "parameter": "net.ipv4.conf.default.rp_filter",
+          "current_value": "0",
+          "recommended_value": "1",
+          "compliant": false,
+          "severity": "HIGH",
+          "description": "Enable reverse path filtering on new interfaces"
+        },
+        {
+          "parameter": "net.ipv6.conf.default.accept_source_route",
+          "current_value": "0",
+          "recommended_value": "0",
+          "compliant": true,
+          "severity": "HIGH",
+          "description": "Disable IPv6 source packet routing on new interfaces"
+        },
+        {
+          "parameter": "kernel.kptr_restrict",
+          "current_value": "0",
+          "recommended_value": "2",
+          "compliant": false,
+          "severity": "HIGH",
+          "description": "Hide kernel pointers (prevents kernel exploits)"
+        },
+        {
+          "parameter": "kernel.yama.ptrace_scope",
+          "current_value": "",
+          "recommended_value": "1",
+          "compliant": false,
+          "severity": "MEDIUM",
+          "description": "Restrict ptrace to parent-child only (prevents process injection)"
+        },
+        {
+          "parameter": "net.ipv4.conf.all.accept_source_route",
+          "current_value": "0",
+          "recommended_value": "0",
+          "compliant": true,
+          "severity": "HIGH",
+          "description": "Disable source packet routing (prevents IP spoofing)"
+        },
+        {
+          "parameter": "net.ipv4.conf.all.send_redirects",
+          "current_value": "1",
+          "recommended_value": "0",
+          "compliant": false,
+          "severity": "MEDIUM",
+          "description": "Disable sending ICMP redirects"
+        },
+        {
+          "parameter": "net.ipv4.icmp_ignore_bogus_error_responses",
+          "current_value": "1",
+          "recommended_value": "1",
+          "compliant": true,
+          "severity": "LOW",
+          "description": "Ignore bogus ICMP error responses"
+        },
+        {
+          "parameter": "net.ipv6.conf.all.accept_source_route",
+          "current_value": "0",
+          "recommended_value": "0",
+          "compliant": true,
+          "severity": "HIGH",
+          "description": "Disable IPv6 source packet routing"
+        },
+        {
+          "parameter": "net.ipv6.conf.all.accept_redirects",
+          "current_value": "1",
+          "recommended_value": "0",
+          "compliant": false,
+          "severity": "MEDIUM",
+          "description": "Disable IPv6 ICMP redirects"
+        },
+        {
+          "parameter": "net.ipv6.conf.default.accept_redirects",
+          "current_value": "1",
+          "recommended_value": "0",
+          "compliant": false,
+          "severity": "MEDIUM",
+          "description": "Disable IPv6 ICMP redirects on new interfaces"
+        },
+        {
+          "parameter": "fs.protected_hardlinks",
+          "current_value": "1",
+          "recommended_value": "1",
+          "compliant": true,
+          "severity": "MEDIUM",
+          "description": "Protect hardlinks from exploitation"
+        },
+        {
+          "parameter": "net.ipv4.conf.all.accept_redirects",
+          "current_value": "0",
+          "recommended_value": "0",
+          "compliant": true,
+          "severity": "MEDIUM",
+          "description": "Disable ICMP redirects (prevents MITM attacks)"
+        },
+        {
+          "parameter": "net.ipv4.conf.default.accept_redirects",
+          "current_value": "1",
+          "recommended_value": "0",
+          "compliant": false,
+          "severity": "MEDIUM",
+          "description": "Disable ICMP redirects on new interfaces"
+        },
+        {
+          "parameter": "net.ipv4.conf.all.secure_redirects",
+          "current_value": "1",
+          "recommended_value": "0",
+          "compliant": false,
+          "severity": "MEDIUM",
+          "description": "Disable secure ICMP redirects"
+        },
+        {
+          "parameter": "net.ipv4.icmp_echo_ignore_broadcasts",
+          "current_value": "1",
+          "recommended_value": "1",
+          "compliant": true,
+          "severity": "LOW",
+          "description": "Ignore ICMP broadcast requests (prevents Smurf attacks)"
+        },
+        {
+          "parameter": "net.ipv4.tcp_syncookies",
+          "current_value": "1",
+          "recommended_value": "1",
+          "compliant": true,
+          "severity": "HIGH",
+          "description": "Enable SYN flood protection"
+        },
+        {
+          "parameter": "kernel.randomize_va_space",
+          "current_value": "2",
+          "recommended_value": "2",
+          "compliant": true,
+          "severity": "CRITICAL",
+          "description": "Enable full ASLR (Address Space Layout Randomization)"
+        }
+      ],
+      "kernel_parameters": [
+        {
+          "parameter": "kernel.version",
+          "value": "7.0.14-linuxkit",
+          "description": "Kernel version"
+        },
+        {
+          "parameter": "ASLR",
+          "value": "Full (recommended)",
+          "description": "Address Space Layout Randomization"
+        },
+        {
+          "parameter": "kernel.modules_disabled",
+          "value": "0",
+          "description": "Kernel module loading (1=disabled, 0=enabled)"
+        }
+      ],
+      "selinux_status": {
+        "installed": false,
+        "enabled": false,
+        "mode": "not installed",
+        "status": "Not available"
+      },
+      "apparmor_status": {
+        "installed": false,
+        "enabled": false,
+        "profiles_loaded": 0,
+        "mode": "not installed",
+        "status": "Not available"
+      },
+      "issues": [
+        {
+          "severity": "CRITICAL",
+          "issue": "System hardening needs improvement (0 critical, 5 high, 7 medium issues)",
+          "recommendation": "Review and apply the hardening recommendations below"
+        },
+        {
+          "severity": "HIGH",
+          "issue": "sysctl net.ipv4.conf.default.accept_source_route is set to '1' (recommended: '0')",
+          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.default.accept_source_route=0 \u0026\u0026 echo 'net.ipv4.conf.default.accept_source_route=0' | sudo tee -a /etc/sysctl.conf"
+        },
+        {
+          "severity": "MEDIUM",
+          "issue": "sysctl net.ipv4.conf.default.secure_redirects is set to '1' (recommended: '0')",
+          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.default.secure_redirects=0 \u0026\u0026 echo 'net.ipv4.conf.default.secure_redirects=0' | sudo tee -a /etc/sysctl.conf"
+        },
+        {
+          "severity": "LOW",
+          "issue": "sysctl net.ipv4.conf.all.log_martians is set to '0' (recommended: '1')",
+          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.all.log_martians=1 \u0026\u0026 echo 'net.ipv4.conf.all.log_martians=1' | sudo tee -a /etc/sysctl.conf"
+        },
+        {
+          "severity": "LOW",
+          "issue": "sysctl net.ipv4.conf.default.log_martians is set to '0' (recommended: '1')",
+          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.default.log_martians=1 \u0026\u0026 echo 'net.ipv4.conf.default.log_martians=1' | sudo tee -a /etc/sysctl.conf"
+        },
+        {
+          "severity": "MEDIUM",
+          "issue": "sysctl net.ipv4.conf.default.send_redirects is set to '1' (recommended: '0')",
+          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.default.send_redirects=0 \u0026\u0026 echo 'net.ipv4.conf.default.send_redirects=0' | sudo tee -a /etc/sysctl.conf"
+        },
+        {
+          "severity": "HIGH",
+          "issue": "sysctl net.ipv4.conf.all.rp_filter is set to '0' (recommended: '1')",
+          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.all.rp_filter=1 \u0026\u0026 echo 'net.ipv4.conf.all.rp_filter=1' | sudo tee -a /etc/sysctl.conf"
+        },
+        {
+          "severity": "HIGH",
+          "issue": "sysctl net.ipv4.conf.default.rp_filter is set to '0' (recommended: '1')",
+          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.default.rp_filter=1 \u0026\u0026 echo 'net.ipv4.conf.default.rp_filter=1' | sudo tee -a /etc/sysctl.conf"
+        },
+        {
+          "severity": "HIGH",
+          "issue": "sysctl kernel.kptr_restrict is set to '0' (recommended: '2')",
+          "recommendation": "Run: sudo sysctl -w kernel.kptr_restrict=2 \u0026\u0026 echo 'kernel.kptr_restrict=2' | sudo tee -a /etc/sysctl.conf"
+        },
+        {
+          "severity": "MEDIUM",
+          "issue": "sysctl net.ipv4.conf.all.send_redirects is set to '1' (recommended: '0')",
+          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.all.send_redirects=0 \u0026\u0026 echo 'net.ipv4.conf.all.send_redirects=0' | sudo tee -a /etc/sysctl.conf"
+        },
+        {
+          "severity": "MEDIUM",
+          "issue": "sysctl net.ipv6.conf.all.accept_redirects is set to '1' (recommended: '0')",
+          "recommendation": "Run: sudo sysctl -w net.ipv6.conf.all.accept_redirects=0 \u0026\u0026 echo 'net.ipv6.conf.all.accept_redirects=0' | sudo tee -a /etc/sysctl.conf"
+        },
+        {
+          "severity": "MEDIUM",
+          "issue": "sysctl net.ipv6.conf.default.accept_redirects is set to '1' (recommended: '0')",
+          "recommendation": "Run: sudo sysctl -w net.ipv6.conf.default.accept_redirects=0 \u0026\u0026 echo 'net.ipv6.conf.default.accept_redirects=0' | sudo tee -a /etc/sysctl.conf"
+        },
+        {
+          "severity": "MEDIUM",
+          "issue": "sysctl net.ipv4.conf.default.accept_redirects is set to '1' (recommended: '0')",
+          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.default.accept_redirects=0 \u0026\u0026 echo 'net.ipv4.conf.default.accept_redirects=0' | sudo tee -a /etc/sysctl.conf"
+        },
+        {
+          "severity": "MEDIUM",
+          "issue": "sysctl net.ipv4.conf.all.secure_redirects is set to '1' (recommended: '0')",
+          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.all.secure_redirects=0 \u0026\u0026 echo 'net.ipv4.conf.all.secure_redirects=0' | sudo tee -a /etc/sysctl.conf"
+        },
+        {
+          "severity": "HIGH",
+          "issue": "No Mandatory Access Control (MAC) system active",
+          "recommendation": "Install and enable either SELinux or AppArmor for enhanced security"
+        }
+      ],
+      "risk_level": "CRITICAL",
+      "security_score": 6
+    },
+    "users": {
+      "sudo_config": {
+        "sudoers_file": "/etc/sudoers",
+        "nopasswd_users": [],
+        "passwordless_count": 0,
+        "sudo_group_members": [],
+        "custom_sudoers_files": [],
+        "use_timestamp": false,
+        "timestamp_timeout_minutes": 15,
+        "require_tty": false,
+        "issues": [
+          "Sudoers file not found"
+        ]
+      },
+      "user_accounts": [
+        {
+          "username": "root",
+          "uid": 0,
+          "gid": 0,
+          "home": "/root",
+          "shell": "/bin/sh",
+          "empty_password": false,
+          "locked": true,
+          "password_expired": false,
+          "in_sudo_group": true,
+          "last_login": "unknown",
+          "risk_level": "OK"
+        },
+        {
+          "username": "nobody",
+          "uid": 65534,
+          "gid": 65534,
+          "home": "/",
+          "shell": "/sbin/nologin",
+          "empty_password": true,
+          "locked": false,
+          "password_expired": false,
+          "in_sudo_group": false,
+          "last_login": "unknown",
+          "risk_level": "MEDIUM"
+        }
+      ],
+      "password_policy": {
+        "min_length": 0,
+        "max_days": 99999,
+        "min_days": 0,
+        "warn_age": 7,
+        "require_uppercase": false,
+        "require_lowercase": false,
+        "require_digits": false,
+        "require_special": false,
+        "remember_passwords": 0,
+        "policy_source": "/etc/login.defs"
+      },
+      "login_config": {
+        "login_timeout_seconds": 60,
+        "login_retries": 3,
+        "fail_delay_seconds": 3,
+        "umask": "022",
+        "create_home_dir": true,
+        "encrypt_method": "SHA512"
+      },
+      "issues": [
+        {
+          "severity": "MEDIUM",
+          "issue": "User 'nobody' has empty or no password set",
+          "recommendation": "Set a strong password: sudo passwd nobody"
+        },
+        {
+          "severity": "MEDIUM",
+          "issue": "Minimum password length is 0 (recommended: 12+)",
+          "recommendation": "Update PASS_MIN_LEN in /etc/login.defs or minlen in PAM configuration"
+        },
+        {
+          "severity": "LOW",
+          "issue": "Password expiry is 99999 days (recommended: 90 or less)",
+          "recommendation": "Set PASS_MAX_DAYS=90 in /etc/login.defs"
+        },
+        {
+          "severity": "LOW",
+          "issue": "Password history not enforced or too short",
+          "recommendation": "Configure PAM to remember at least 5 previous passwords"
+        },
+        {
+          "severity": "LOW",
+          "issue": "Umask is 022 (files readable by others)",
+          "recommendation": "Consider setting UMASK=027 in /etc/login.defs for better privacy"
+        }
+      ],
+      "risk_level": "MEDIUM",
+      "security_score": 77
+    },
+    "rootkit": {
+      "rkhunter": {
+        "installed": false,
+        "last_update": "0001-01-01T00:00:00Z",
+        "last_scan": "0001-01-01T00:00:00Z",
+        "warnings_found": 0,
+        "status": "Not installed"
+      },
+      "chkrootkit": {
+        "installed": false,
+        "last_scan": "0001-01-01T00:00:00Z",
+        "infections_found": 0,
+        "status": "Not installed"
+      },
+      "last_scan_time": "0001-01-01T00:00:00Z",
+      "warnings": [],
+      "issues": [
+        {
+          "severity": "HIGH",
+          "issue": "No rootkit detection tools installed",
+          "recommendation": "Install rkhunter: sudo apt-get install rkhunter (Debian/Ubuntu) or sudo yum install rkhunter (RHEL/CentOS)"
+        }
+      ],
+      "risk_level": "MEDIUM",
+      "security_score": 75
+    },
+    "integrity": {
+      "aide": {
+        "installed": false,
+        "initialized": false,
+        "database_exists": false,
+        "database_age_days": 0,
+        "last_check": "0001-01-01T00:00:00Z",
+        "changes_found": 0,
+        "status": "Not installed"
+      },
+      "tripwire": {
+        "installed": false,
+        "status": "Not installed"
+      },
+      "last_scan_time": "0001-01-01T00:00:00Z",
+      "changes_detected": 0,
+      "issues": [
+        {
+          "severity": "HIGH",
+          "issue": "No File Integrity Monitoring (FIM) tool installed",
+          "recommendation": "Install AIDE: sudo apt-get install aide \u0026\u0026 sudo aideinit"
+        }
+      ],
+      "risk_level": "MEDIUM",
+      "security_score": 70
+    },
+    "logs": {
+      "auth_log": {
+        "log_file": "",
+        "log_available": false,
+        "analyzed_lines": 0,
+        "time_range": "",
+        "failed_logins": 0,
+        "successful_logins": 0,
+        "failed_users": {},
+        "successful_users": {},
+        "failed_ips": {},
+        "root_login_attempts": 0,
+        "invalid_user_attempts": 0
+      },
+      "sudo_log": {
+        "log_available": false,
+        "analyzed_lines": 0,
+        "time_range": "",
+        "sudo_commands_executed": 0,
+        "sudo_users": {},
+        "failed_sudo_attempts": 0,
+        "root_sessions": 0
+      },
+      "system_log": {
+        "log_available": false,
+        "errors": 0,
+        "warnings": 0,
+        "critical_events": 0,
+        "service_failures": 0
+      },
+      "security_events": [],
+      "issues": [
+        {
+          "severity": "HIGH",
+          "issue": "Authentication logs not found or not readable",
+          "recommendation": "Check /var/log/auth.log or /var/log/secure permissions"
+        }
+      ],
+      "risk_level": "MEDIUM",
+      "security_score": 80
+    }
+  },
   "risk_summary": {
-    "critical": 1,
+    "critical": 2,
     "high": 0,
     "medium": 2,
     "low": 1,
     "info": 0
   },
-  "overall_score": 60
+  "overall_score": 38
 }

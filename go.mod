@@ -3,14 +3,15 @@ module github.com/adrian13508/dockershield
 go 1.24.7
 
 require (
+	github.com/blang/semver v3.5.1+incompatible
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/fatih/color v1.18.0
+	github.com/rhysd/go-github-selfupdate v1.2.3
 	github.com/spf13/cobra v1.10.1
 )
 
 require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
@@ -34,7 +35,6 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/rhysd/go-github-selfupdate v1.2.3 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/tcnksm/go-gitconfig v0.1.2 // indirect
 	github.com/ulikunitz/xz v0.5.9 // indirect

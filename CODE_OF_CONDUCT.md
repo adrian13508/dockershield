@@ -60,7 +60,7 @@ representative at an online or offline event.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the community leaders responsible for enforcement at
-conduct@dockershield.dev or by opening a private security advisory on GitHub.
+adrian@kurowski.dev or by opening a private security advisory on GitHub.
 
 All complaints will be reviewed and investigated promptly and fairly.
 

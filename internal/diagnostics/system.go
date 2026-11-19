@@ -24,7 +24,7 @@ func checkOS() CheckResult {
 	osInfo := runtime.GOOS
 
 	var detailedOS string
-	var status CheckStatus = StatusPass
+	status := StatusPass
 
 	switch osInfo {
 	case "linux":

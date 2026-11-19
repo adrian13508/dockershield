@@ -105,8 +105,10 @@ var versionCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("DockerShield %s (commit: %s)\n", version, commit)
 
-		// Check for updates (non-blocking)
-		checkForUpdatesNotification()
+		// Network access only on explicit request
+		if versionCheck {
+			checkForUpdatesNotification()
+		}
 	},
 }
 
@@ -207,6 +209,9 @@ var (
 	failOn      string
 )
 
+// versionCheck enables the GitHub release lookup in `version --check`
+var versionCheck bool
+
 var (
 	// Flags for status command
 	statusJSON   bool
@@ -235,6 +240,8 @@ func init() {
 	scanCmd.Flags().BoolVarP(&verboseMode, "verbose", "v", false, "Enable verbose logging")
 	scanCmd.Flags().StringVar(&failOn, "fail-on", "", "Exit with code 2 when findings at or above this severity exist (critical, high, medium, low)")
 	scanCmd.MarkFlagsMutuallyExclusive("json", "prometheus")
+
+	versionCmd.Flags().BoolVar(&versionCheck, "check", false, "Check GitHub for a newer release (makes a network request)")
 
 	// Add flags to status command
 	statusCmd.Flags().BoolVar(&statusJSON, "json", false, "Output results in JSON format")
@@ -421,9 +428,6 @@ func runScan(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println("\n✓ Scan complete")
-
-	// Check for updates notification
-	checkForUpdatesNotification()
 
 	exitOnFindings(riskSummary)
 	return nil
@@ -988,10 +992,9 @@ func checkForUpdatesNotification() {
 		return
 	}
 
-	// Check for updates (with short timeout)
 	updateInfo, err := updater.CheckForUpdates(currentVer)
 	if err != nil {
-		// Silently fail - don't bother user with update check errors
+		fmt.Fprintf(os.Stderr, "update check failed: %v\n", err)
 		return
 	}
 

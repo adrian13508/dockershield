@@ -97,7 +97,7 @@ release:
   header: |
     ## DockerShield {{ .Tag }}
 
-    **Catch exposed ports before hackers do**
+    Read-only scanner for Docker port exposure and host firewall state.
 
     ### Quick Install
 
@@ -117,11 +117,11 @@ release:
 
     Download checksums.txt and verify your binary:
     ```bash
-    sha256sum -c checksums.txt 2>&1 | grep OK
+    sha256sum -c checksums.txt --ignore-missing
     ```
 
     ---
-    Made with ❤️ for the self-hosting community
+
 
 # Uncomment if you want to publish to Homebrew
 # brews:
@@ -130,7 +130,7 @@ release:
 #       owner: adrian13508
 #       name: homebrew-tap
 #     homepage: https://github.com/adrian13508/dockershield
-#     description: Docker security scanner - catch exposed ports before hackers do
+#     description: Docker security scanner - read-only scanner for exposed container ports
 #     license: Apache-2.0
 #     install: |
 #       bin.install "dockershield"

@@ -600,11 +600,8 @@ func (u *UserHardeningStatus) evaluateUserSecurity() {
 	}
 
 	// Check accounts with empty passwords
-	emptyPasswordAccounts := []string{}
 	for _, account := range u.UserAccounts {
 		if account.EmptyPassword && !account.Locked {
-			emptyPasswordAccounts = append(emptyPasswordAccounts, account.Username)
-
 			severity := "MEDIUM"
 			if account.UID == 0 {
 				severity = "CRITICAL"

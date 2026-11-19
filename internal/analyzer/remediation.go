@@ -108,7 +108,7 @@ func FormatRemediation(r Remediation) string {
 	}
 
 	if r.Command != "" {
-		sb.WriteString(fmt.Sprintf("\n   Example:\n"))
+		sb.WriteString("\n   Example:\n")
 		for _, line := range strings.Split(r.Command, "\n") {
 			sb.WriteString(fmt.Sprintf("   %s\n", line))
 		}

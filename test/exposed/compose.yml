@@ -1,0 +1,18 @@
+# Deliberately misconfigured services for testing the scanner.
+# Do not run this on a machine reachable from the internet.
+name: dockershield-test
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: not-a-real-secret
+    ports:
+      - "5432:5432" # all interfaces: should be reported as critical
+  cache:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:6379:6379" # localhost only: should be reported as OK
+  web:
+    image: nginx:alpine
+    ports:
+      - "8080:80" # all interfaces

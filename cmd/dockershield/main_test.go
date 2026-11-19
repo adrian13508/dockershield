@@ -25,3 +25,15 @@ func TestFindingsAtOrAbove(t *testing.T) {
 		}
 	}
 }
+
+// The scanner must not touch the network unless asked: the release lookup
+// is opt-in via `version --check`.
+func TestVersionCheckIsOptIn(t *testing.T) {
+	f := versionCmd.Flags().Lookup("check")
+	if f == nil {
+		t.Fatal("version --check flag missing")
+	}
+	if f.DefValue != "false" {
+		t.Errorf("version --check default = %s, want false", f.DefValue)
+	}
+}

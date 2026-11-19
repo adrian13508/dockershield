@@ -114,8 +114,9 @@ func checkRkhunter() RkhunterInfo {
 		}
 	}
 
-	// Check if database is up to date
-	info.DatabaseVersion = getRkhunterDatabaseVersion()
+	// DatabaseVersion is intentionally left empty: the only way to get it is
+	// `rkhunter --versioncheck`, which makes a network request. The scanner
+	// does not touch the network.
 
 	// Try to get last scan results from log
 	info.LastScan, info.WarningsFound, info.SuspiciousFiles = parseRkhunterLog()
@@ -135,27 +136,6 @@ func checkRkhunter() RkhunterInfo {
 	}
 
 	return info
-}
-
-// getRkhunterDatabaseVersion gets rkhunter database version
-func getRkhunterDatabaseVersion() string {
-	cmd := exec.Command("rkhunter", "--versioncheck")
-	output, err := cmd.Output()
-	if err != nil {
-		return "unknown"
-	}
-
-	lines := strings.Split(string(output), "\n")
-	for _, line := range lines {
-		if strings.Contains(line, "database") || strings.Contains(line, "version") {
-			parts := strings.Fields(line)
-			if len(parts) > 0 {
-				return parts[len(parts)-1]
-			}
-		}
-	}
-
-	return "unknown"
 }
 
 // parseRkhunterLog parses the rkhunter log file for recent scan results

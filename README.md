@@ -1,289 +1,324 @@
-# 🛡️ DockerShield
+# DockerShield
 
 [![Release](https://img.shields.io/github/v/release/adrian13508/dockershield)](https://github.com/adrian13508/dockershield/releases)
+[![CI](https://github.com/adrian13508/dockershield/actions/workflows/ci.yml/badge.svg)](https://github.com/adrian13508/dockershield/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/adrian13508/dockershield)](LICENSE)
-[![Go Report Card](https://goreportcard.com/badge/github.com/adrian13508/dockershield)](https://goreportcard.com/report/github.com/adrian13508/dockershield)
 
-**Catch exposed ports before hackers do**
+Docker publishes container ports by writing its own iptables rules, so a port mapped
+with `-p 5432:5432` is reachable from outside even when UFW says it is denied
+([Docker documentation](https://docs.docker.com/engine/network/packet-filtering-firewalls/#docker-and-ufw)).
+DockerShield is a read-only command-line scanner that lists which container ports are
+bound to all interfaces, reports whether UFW and Docker's iptables chains are both
+active, and audits a few host settings such as the SSH configuration.
+It does not change any configuration, it does not fix anything, and it does not test
+whether a port is actually reachable from the internet.
 
-## The Problem
+## Example
 
-Ever wondered if your database is accidentally exposed to the internet? You're not alone.
+Real output, shortened. The scan ran against the three test services in
+[test/exposed/compose.yml](test/exposed/compose.yml): PostgreSQL and nginx published on
+all interfaces, Redis bound to `127.0.0.1`. The full, unedited output is in
+[EXAMPLE_OUTPUT.md](EXAMPLE_OUTPUT.md).
 
-**Docker bypasses UFW firewall rules by default.** That means your `ufw deny 5432` won't protect your PostgreSQL container. Most developers don't realize this until it's too late.
+```
+$ dockershield scan
+[...]
+┌────────────────────────────────────────────┐
+│  SECURITY SUMMARY                          │
+├────────────────────────────────────────────┤
+│  Security Score: 38/100 (POOR)             │
+│                                            │
+│  🔴 Critical Issues: 2                     │
+│  🟡 Medium Issues: 2                       │
+│  ℹ️ Low Issues: 1                          │
+└────────────────────────────────────────────┘
 
-I learned this the hard way when I got an alert from my VPS provider: *"Suspicious activity detected on port 5432."* My production database had been exposed to the internet for 3 months despite having UFW configured. Docker had bypassed it entirely by directly manipulating iptables.
 
-**Real-world data from security scans:**
-- 86% of self-hosted VPS instances have at least one critical port exposed to 0.0.0.0
-- Most common exposures: PostgreSQL (5432), Redis (6379), MongoDB (27017)
-- Average time to discovery: 3+ months
+📦 RUNNING CONTAINERS
+═══════════════════════════════════════════════
+⚠️  WARN dockershield-test-web-1 - MEDIUM×2
+❌ ISSUES dockershield-test-db-1 - CRITICAL×2
+✅ OK dockershield-test-cache-1
 
-DockerShield exists so you don't make the same mistake.
 
-## ⚡ 60-Second Quickstart
+🔧 RECOMMENDED FIXES
+═══════════════════════════════════════════════
+[...]
+2. 🔴 Container 'dockershield-test-db-1': PostgreSQL exposed to public internet [CRITICAL]
+   Fix: Bind port to localhost (127.0.0.1) or specific private IP
+[...]
+   Example:
+   # Instead of: -p 5432:5432
+   # Use (IPv4 + IPv6): -p 127.0.0.1:5432:5432
+[...]
+```
+
+PostgreSQL is counted twice because Docker published it on both `0.0.0.0` and `::`.
+See [Limitations](#limitations).
+
+## Install
+
+DockerShield needs access to the Docker socket. The firewall and host checks need root.
+The host checks are written for Linux. On macOS and Windows only the container port
+scan works.
+
+### Release binary, verified by hand
 
 ```bash
-# Install and run your first scan
-curl -sSL https://raw.githubusercontent.com/adrian13508/dockershield/main/install.sh | bash
-dockershield scan
+VERSION=0.1.3
+ARCHIVE=dockershield_${VERSION}_linux_x86_64.tar.gz   # or linux_arm64, linux_armv7, darwin_arm64, darwin_x86_64
+BASE=https://github.com/adrian13508/dockershield/releases/download/v${VERSION}
+
+curl -sSLO "$BASE/$ARCHIVE"
+curl -sSLO "$BASE/checksums.txt"
+sha256sum -c checksums.txt --ignore-missing
+tar -xzf "$ARCHIVE" dockershield
+sudo install -m 0755 dockershield /usr/local/bin/dockershield
 ```
 
-**Example output:**
-```
-🔴 CRITICAL: PostgreSQL exposed to 0.0.0.0:5432
-🔴 CRITICAL: Redis exposed to 0.0.0.0:6379
-🟡 MEDIUM: Grafana exposed to 0.0.0.0:3000
+`checksums.txt` is published with every release. It protects against a corrupted or
+swapped download. It does not protect against a compromised GitHub account, because
+the checksums come from the same place as the binaries. Releases are not signed.
 
-Security Score: 45/100 (FAIR)
-
-Fix: docker run -p 127.0.0.1:5432:5432 postgres
-```
-
-**That's it.** Full security report in your terminal.
-
-[See more example outputs →](EXAMPLE_OUTPUT.md)
-
-### Other Commands
+### From source
 
 ```bash
-# Quick cached summary
-dockershield status
-
-# Check specific category
-dockershield check docker
-dockershield check ssh
-
-# System diagnostics
-dockershield doctor
-
-# Verbose output with network info
-dockershield scan --verbose
-
-# JSON output for automation
-dockershield scan --json --output report.json
-
-# Upgrade to latest version
-dockershield upgrade
+go install github.com/adrian13508/dockershield/cmd/dockershield@latest
 ```
 
-## ✨ Features
+Requires the Go version listed in [go.mod](go.mod).
 
-### Docker Security
-- **Container Scanning**: Lists all Docker containers with their port bindings
-- **Intelligent Port Analysis**: Recognizes 50+ dangerous ports (databases, admin panels, etc.)
-- **Network Topology**: Maps Docker networks and container relationships
-- **Firewall Monitoring**: Detects when Docker bypasses UFW/iptables
+### Install script
 
-### System Security
-- **SSH Configuration Audit**: Analyzes SSH security (root login, password auth, key-only setup)
-- **fail2ban Intrusion Prevention**: Checks if fail2ban is installed, running, and protecting critical services
-- **System Update Status**: Tracks pending updates, security patches, and reboot requirements
-
-### Reporting & Automation
-- **Security Scoring**: 0-100 score with EXCELLENT/GOOD/FAIR/POOR/CRITICAL ratings
-- **Risk Classification**: Automatically categorizes issues as CRITICAL/HIGH/MEDIUM/LOW
-- **Actionable Recommendations**: Get exact commands to fix security issues
-- **JSON Output**: Machine-readable format for CI/CD and automation
-- **Prometheus Metrics**: `scan --prometheus` emits node_exporter textfile format for Grafana dashboards and alerting
-- **CI-Friendly Exit Codes**: `scan --fail-on critical` exits with code 2 when critical findings exist — gate deploys or trigger alerts from any script
-- **Color-Coded Output**: Red for critical, yellow for medium, green for safe
-
-### Distribution & Updates
-- **Auto-Update**: Built-in upgrade command with release notifications
-- **One-Line Installer**: Simple curl command to install
-- **Cross-Platform**: Supports Linux (amd64, arm64, arm), macOS (Intel, M1/M2), Windows
-- **Zero Configuration**: Works immediately out of the box
-
-### Dangerous Ports Detected
-
-DockerShield identifies risky exposures including:
-- **Databases**: PostgreSQL (5432), MySQL (3306), MongoDB (27017), Redis (6379), Elasticsearch (9200)
-- **Admin Interfaces**: Grafana (3000), Prometheus (9090), Portainer (9000), Docker daemon (2375/2376)
-- **Remote Access**: SSH (22), RDP (3389), VNC (5900)
-- **Message Queues**: RabbitMQ (5672), Kafka (9092)
-- Plus 40+ other services
-
-[See example output](EXAMPLE_OUTPUT.md)
-
-## 📈 Continuous Monitoring (Prometheus)
-
-DockerShield is strictly read-only — it never changes your system. For continuous
-monitoring, run it from cron and publish metrics through the node_exporter
-[textfile collector](https://github.com/prometheus/node_exporter#textfile-collector):
+The script does the same steps as the manual install above, including the SHA256 check,
+and stops if the checksum does not match. Download it and read it before running it:
 
 ```bash
-# /etc/cron.d/dockershield — scan every 15 minutes
+curl -sSLO https://raw.githubusercontent.com/adrian13508/dockershield/main/install.sh
+less install.sh
+bash install.sh
+```
+
+`DOCKERSHIELD_VERSION=v0.1.3` pins a release. `INSTALL_DIR` changes the target directory
+(default `/usr/local/bin`, which uses `sudo`).
+
+## Usage
+
+```bash
+sudo dockershield scan                     # full scan, text output
+sudo dockershield scan --verbose           # include stopped containers and networks
+sudo dockershield scan --json              # JSON on stdout
+sudo dockershield scan --json -o report.json
+sudo dockershield scan --prometheus        # metrics for the node_exporter textfile collector
+sudo dockershield scan --fail-on critical  # exit code 2 if a finding at or above this level exists
+
+dockershield status                        # summary of the last scan, read from ~/.dockershield/state.json
+dockershield check firewall                # one category: ports, networks, firewall, containers
+dockershield doctor                        # checks that the scanner's own requirements are met
+dockershield version --check               # asks GitHub whether a newer release exists
+dockershield upgrade                       # replaces the binary with the latest release
+```
+
+`-o` accepts relative paths only. For an absolute path, redirect stdout.
+
+## How it works
+
+Each item names the source of the data: the API call, command or file.
+
+**Container ports.** The scanner calls the Docker API (`ContainerList` with stopped
+containers included, then `ContainerInspect` for each) and reads
+`NetworkSettings.Ports`. Each host binding is classified by its host IP:
+
+| Host IP | Classification |
+|---------|----------------|
+| `0.0.0.0`, `::` | `public` |
+| `127.0.0.1`, `::1` | `localhost` |
+| anything else | `specific_ip` |
+
+**Risk level.** The container port number is looked up in a fixed table of 38 ports in
+[internal/analyzer/ports.go](internal/analyzer/ports.go). Databases and Telnet are
+`critical`. Admin interfaces and remote access are `high`. Web, mail, DNS and message
+queues are `medium`. A `public` binding gets the level from the table, or `medium` if
+the port is not in the table. A `localhost` binding is always `low`. A `specific_ip`
+binding is `medium` for a port the table marks `critical`, otherwise `low`.
+
+**Score.** Start at 100. Subtract 25 per `critical` binding, 10 per `high`, 5 per
+`medium`, 2 per `low`. The score covers container port bindings only. The SSH, firewall
+and other host checks have their own sections and do not change it.
+
+**Firewall.** The scanner runs `iptables-save` (and `sudo -n iptables-save` if that
+fails) and looks for chains whose name starts with `DOCKER`. It runs `ufw status` and
+looks for `Status: active`. If both are true it reports "Docker is bypassing UFW".
+This is a statement about the default behaviour of that combination. The scanner does
+not evaluate the rules themselves.
+
+**SSH.** It reads `/etc/ssh/sshd_config` and reports `Port`, `PermitRootLogin`,
+`PasswordAuthentication`, `PubkeyAuthentication`, `PermitEmptyPasswords`.
+
+**fail2ban.** `which fail2ban-client`, `systemctl is-active fail2ban`,
+`fail2ban-client status` (through `sudo` first).
+
+**Updates.** `/etc/os-release`, `uname -r`, `apt list --upgradable`,
+`dpkg -l unattended-upgrades`, `/var/log/apt/history.log`, `/var/run/reboot-required`,
+`/etc/apt/apt.conf.d/20auto-upgrades` and `50unattended-upgrades`.
+
+**Other host checks.** These run in every scan and appear under "Advanced security
+audit":
+
+- kernel settings through `sysctl -n`, plus `getenforce`, `aa-enabled`, `aa-status`
+- accounts, sudo and password policy from `/etc/passwd`, `/etc/shadow`, `/etc/group`,
+  `/etc/login.defs`, `/etc/sudoers`, `/etc/sudoers.d/*`, `/etc/pam.d/common-password`,
+  `system-auth` and `password-auth`, plus `groups` and `lastlog`
+- whether rkhunter, chkrootkit or AIDE are installed, their log files under
+  `/var/log`, the AIDE database under `/var/lib`, and AIDE cron entries.
+  DockerShield does not run a rootkit or integrity scan itself.
+- `/var/log/auth.log` or `/var/log/secure`, `/var/log/syslog` or `/var/log/messages`,
+  and `journalctl --since "24 hours ago"` at priorities err, warning and crit
+
+**Network access.** `scan`, `status`, `check` and `doctor` make no network requests.
+`upgrade` and `version --check` contact the GitHub API. Releases up to and including
+v0.1.3 also checked GitHub for a newer version at the end of every text-mode scan and
+ran `rkhunter --versioncheck` when rkhunter was installed. Both were removed after
+v0.1.3. There is no telemetry.
+
+**Files written.** Each scan writes `~/.dockershield/state.json` so that `status` can
+read it. `-o` writes the file you name. Nothing else is written.
+
+## Output formats
+
+**JSON** (`scan --json`): `timestamp`, `hostname`, `overall_score`, `risk_summary`,
+`containers[]` (each with `ports[]` carrying `host_ip`, `host_port`, `container_port`,
+`protocol`, `exposure_type`, `risk_level`, `risk_reason`), `networks[]`, `firewall`,
+`security_checks`. A complete report from a real run is in
+[example_report.json](example_report.json). Existing fields are not renamed or removed
+between releases. New fields may be added.
+
+**Prometheus** (`scan --prometheus`): gauges in the text exposition format.
+
+```
+dockershield_security_score
+dockershield_risks{severity}
+dockershield_containers{state}
+dockershield_exposed_port{container,port,protocol,severity}
+dockershield_ufw_active
+dockershield_docker_bypassing_ufw
+dockershield_last_scan_timestamp_seconds
+```
+
+Cron entry for the node_exporter
+[textfile collector](https://github.com/prometheus/node_exporter#textfile-collector).
+The write is atomic, and a failed scan leaves the previous file in place:
+
+```
 */15 * * * * root dockershield scan --prometheus > /var/lib/node_exporter/textfile/dockershield.prom.$$ && mv /var/lib/node_exporter/textfile/dockershield.prom.$$ /var/lib/node_exporter/textfile/dockershield.prom
 ```
 
-Exported metrics: `dockershield_security_score`, `dockershield_risks{severity}`,
-`dockershield_exposed_port{container,port,protocol,severity}`,
-`dockershield_docker_bypassing_ufw`, `dockershield_ufw_active`,
-`dockershield_containers{state}`, `dockershield_last_scan_timestamp_seconds`.
-
-Example Prometheus alert rules:
+Alert rules that use these metrics:
 
 ```yaml
 groups:
   - name: dockershield
     rules:
-      - alert: DockerBypassingUFW
-        expr: dockershield_docker_bypassing_ufw == 1
-        for: 5m
-        annotations:
-          summary: "Docker is bypassing UFW on {{ $labels.instance }}"
       - alert: CriticalPortExposed
         expr: dockershield_exposed_port{severity="critical"} == 1
         for: 5m
-        annotations:
-          summary: "{{ $labels.container }} exposes port {{ $labels.port }} publicly on {{ $labels.instance }}"
+      - alert: DockerBypassingUFW
+        expr: dockershield_docker_bypassing_ufw == 1
+        for: 5m
       - alert: DockershieldScanStale
         expr: time() - dockershield_last_scan_timestamp_seconds > 3600
-        annotations:
-          summary: "DockerShield scan has not run for over an hour on {{ $labels.instance }}"
 ```
 
-No Prometheus? The `--fail-on` flag turns any cron job into an alert:
+**Exit codes.** `0` scan finished. `1` error. `2` `--fail-on` was set and a container
+port finding at or above that level exists. Without Prometheus:
 
 ```bash
-dockershield scan --fail-on critical > /dev/null || curl -s -d "DockerShield: critical exposure on $(hostname)" ntfy.sh/your-topic
+dockershield scan --fail-on critical > /dev/null || curl -s -d "critical exposure on $(hostname)" ntfy.sh/your-topic
 ```
 
-## 🎯 Why DockerShield?
+## Limitations
 
-**Built for indie developers and self-hosters, not enterprises:**
-- No complex configuration files
-- No agent installation or daemon running
-- No cloud accounts or API keys
-- Just run it and get answers
+Known problems in the current code. Each one is tracked for a fix or will stay
+documented here.
 
-**Fast and lightweight:**
-- ⚡ Scans complete in 2-5 seconds (typical VPS with 5-10 containers)
-- 💾 8MB binary, ~15MB memory usage
-- 🔒 Runs entirely locally - no data sent anywhere
-- 🚀 Zero dependencies beyond Docker API access
+- **"Exposed to public internet" means "bound to all interfaces".** The scanner does
+  not know about a provider firewall, a security group, NAT, or whether the host has a
+  public address at all.
+- **The UFW bypass warning is a heuristic.** It appears whenever UFW is active and
+  Docker's chains exist. It still appears after you have added `DOCKER-USER` rules or
+  installed ufw-docker, because the rules are not evaluated.
+- **Without root the firewall result is wrong, not missing.** `ufw status` fails for
+  non-root users and is read as "UFW inactive". JSON and Prometheus then report
+  `ufw_active` and `docker_bypassing_ufw` as 0. Run scheduled scans as root.
+- **IPv4 and IPv6 are counted separately.** One `-p 5432:5432` on a dual-stack host
+  produces two findings and costs 50 points. The Prometheus output then contains two
+  `dockershield_exposed_port` lines with identical labels.
+- **IPv6 firewall rules are not read.** Only `iptables-save` is used, not
+  `ip6tables-save`.
+- **Host networking is under-reported.** A container with `network_mode: host` has no
+  port list in the Docker API. The text output mentions it under fixes. JSON, metrics,
+  the score and `--fail-on` do not.
+- **`check ports` and `check containers` do not assign risk levels.** Every port is
+  reported as `info`. Use `scan`.
+- **The service name comes from the container port number.** Anything on container
+  port 3000 is called Grafana. Port 80 and 443 on all interfaces are `medium`, so a
+  host that serves web traffic cannot reach a score of 100.
+- **A binding to a specific address is never rated above `medium`,** even when that
+  address is the host's public IP. Private, VPN and public addresses are not
+  distinguished.
+- **SSH parsing is partial.** `Include` files (including `/etc/ssh/sshd_config.d/`)
+  and `Match` blocks are ignored. When a directive appears twice the scanner uses the
+  last one. sshd uses the first.
+- **The Docker daemon's own TCP listener is not checked.** Ports 2375 and 2376 are
+  flagged only when a container publishes them. A mounted `docker.sock` is not flagged.
+- **Not covered:** Swarm ingress ports, macvlan and ipvlan containers, firewalld,
+  native nftables rule sets. Podman is untested.
+- **Update checks cover apt only.**
+- **`upgrade` does not verify a checksum.** The install script and the manual install
+  do.
+- **Test coverage is low.** Risk rating and the reporters have unit tests. The
+  firewall, SSH and other host checks have none.
+- **`created_at` in JSON is always the zero time.**
 
-**Comprehensive security checks:**
-- Docker container port exposure
-- SSH configuration hardening
-- fail2ban intrusion prevention
-- System updates and patches
-- Firewall rule monitoring
+## Comparison
 
-## 🏗️ Development Status
+| | DockerShield | [ufw-docker](https://github.com/chaifeng/ufw-docker) | External port scanner (for example nmap from another machine) |
+|---|---|---|---|
+| Runs on | the Docker host | the Docker host | a different machine |
+| Changes the system | no | yes: adds rules to `/etc/ufw/after.rules` that filter traffic in the `DOCKER-USER` chain | no |
+| Source of information | Docker API, `iptables-save`, `ufw status`, config files | not a scanner | TCP/UDP connections to the host |
+| Knows which container owns a port | yes | not applicable | no |
+| Sees what is actually reachable from outside | no | not applicable | yes |
+| Sees ports bound to localhost or a private address | yes | not applicable | no |
+| Accounts for a provider firewall or NAT | no | not applicable | yes |
 
-- 🟢 **Active Development** - Updated weekly
-- 📅 v0.1.0 released: November 2025
-- 📅 v0.2.0 planned: December 2025
-- 💬 Issues typically responded to within 24-48 hours
+The tools answer different questions. ufw-docker changes the firewall so that UFW rules
+apply to published ports. An external scan shows what an outside client can connect to.
+DockerShield shows what the host is configured to publish and which container is
+responsible.
 
-[View Roadmap & Changelog →](CHANGELOG.md)
+## Background
 
-## 📋 Requirements
+TODO(Adrian): Two or three paragraphs in your own words. Why you wrote this, what
+happened on your server, what you checked afterwards. Only facts you can stand behind.
 
-- Go 1.21 or higher
-- Docker Engine running
-- Linux (Ubuntu/Debian recommended)
-
-## 🛠️ Development
+## Development
 
 ```bash
-# Install dependencies
-go mod tidy
-
-# Build
 make build
-
-# Format code
-make fmt
-
-# Run tests
-make test
+go vet ./...
+go test ./...
+golangci-lint run
 ```
 
-## 📖 Project Structure
+CI runs the same commands on every pull request.
+[HOW_THIS_IS_BUILT.md](HOW_THIS_IS_BUILT.md) describes how the code is written and
+checked, including the use of AI tools.
 
-```
-dockershield/
-├── cmd/dockershield/       # Main application entry point
-├── internal/
-│   ├── docker/            # Docker API client wrapper
-│   ├── analyzer/          # Port risk analysis and scoring
-│   ├── security/          # System security checks (SSH, fail2ban, updates)
-│   ├── system/            # Firewall/iptables monitoring
-│   ├── reporter/          # Report generation (terminal, JSON)
-│   └── updater/           # Auto-update functionality
-├── pkg/models/            # Shared data types
-└── Makefile               # Build automation
-```
+- [CHANGELOG.md](CHANGELOG.md)
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [SECURITY.md](SECURITY.md)
 
-## 🎯 Goals
+## License
 
-DockerShield helps you answer critical security questions like:
-- Are any of my database ports exposed to the internet?
-- Is Docker bypassing my firewall (UFW/iptables)?
-- Is my SSH configuration secure (key-only auth, no root login)?
-- Is fail2ban protecting my server from brute-force attacks?
-- Are there critical security updates I need to install?
-- Which containers are on which networks?
-
-Perfect for indie developers running 1-10 VPS instances who need comprehensive security visibility without enterprise-grade complexity or cost.
-
-## 📝 License
-
-Apache License 2.0 - see [LICENSE](LICENSE) file for details
-
-## 🤝 Contributing
-
-Contributions are welcome! We're actively looking for:
-
-- 🐛 Bug reports and fixes
-- ✨ Feature suggestions and implementations
-- 📚 Documentation improvements
-- 🧪 Test coverage expansion
-- 🌍 Translations and internationalization
-
-**Getting Started:**
-1. Check out [good first issues](https://github.com/adrian13508/dockershield/labels/good-first-issue)
-2. Read our [Contributing Guide](CONTRIBUTING.md)
-3. Review the [Code of Conduct](CODE_OF_CONDUCT.md)
-4. Fork, code, and submit a PR!
-
-**Development Setup:**
-```bash
-git clone https://github.com/adrian13508/dockershield.git
-cd dockershield
-go mod tidy
-make build
-make test
-```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
-
-## 🔒 Security
-
-Found a security vulnerability? Please read our [Security Policy](SECURITY.md) for responsible disclosure guidelines.
-
-## 📚 Documentation
-
-- [Changelog](CHANGELOG.md) - Version history and release notes
-- [Contributing Guide](CONTRIBUTING.md) - How to contribute
-- [Security Policy](SECURITY.md) - Security reporting
-- [Code of Conduct](CODE_OF_CONDUCT.md) - Community guidelines
-- [Example Output](EXAMPLE_OUTPUT.md) - Sample scan results
-
-## 💬 Support
-
-- 🐛 [Report a Bug](https://github.com/adrian13508/dockershield/issues/new?template=bug_report.md)
-- 💡 [Request a Feature](https://github.com/adrian13508/dockershield/issues/new?template=feature_request.md)
-- 💬 [GitHub Discussions](https://github.com/adrian13508/dockershield/discussions)
-- 📖 [Documentation](https://github.com/adrian13508/dockershield/wiki)
-
----
-
-**Version:** 0.1.0
-**License:** Apache 2.0
-**Status:** Active Development 🟢
-
-Made with ❤️ for the self-hosting community
+Apache License 2.0. See [LICENSE](LICENSE).

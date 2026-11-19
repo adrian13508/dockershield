@@ -158,13 +158,16 @@ A `private_or_vpn` binding is `medium` for a port the table marks `critical`, ot
 `low`.
 
 **Container settings.** From the same `ContainerInspect` data, for running containers:
-`HostConfig.NetworkMode == "host"` (`high`), and a mount whose source is
-`/var/run/docker.sock` or `/run/docker.sock` (`medium`).
+`HostConfig.NetworkMode == "host"` (`high`), and a mount whose source is a file named
+`docker.sock` or `podman.sock`, or a directory that contains the default socket
+(`/`, `/var`, `/var/run`, `/run`) (`medium`). Paths are compared as written; symlinks
+are not resolved.
 
 **Docker daemon.** The scanner reads `hosts` and `tlsverify` from
 `/etc/docker/daemon.json` and the command line of a running `dockerd` from
 `/proc/*/cmdline`. A `tcp://` listener on a non-loopback address is `critical` without
-`tlsverify` and `medium` with it.
+`tlsverify` and `medium` with it. `tlsverify` is taken from the same source as the
+listener, so one daemon's setting does not cover another daemon's listener.
 
 **Firewall.** The scanner runs `iptables-save` and `ip6tables-save` (each falls back to
 `sudo -n`). It looks for chains whose name starts with `DOCKER` and reads the rules in

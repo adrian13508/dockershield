@@ -24,16 +24,16 @@ var severityRank = map[models.RiskLevel]int{
 	models.RiskInfo: 0, models.RiskLow: 1, models.RiskMedium: 2, models.RiskHigh: 3, models.RiskCritical: 4,
 }
 
-// DaemonTCP describes TCP listeners configured for the Docker daemon itself
-type DaemonTCP struct {
-	Hosts     []string // tcp://... entries
+// DaemonListener is one tcp:// address a Docker daemon listens on
+type DaemonListener struct {
+	Host      string
 	TLSVerify bool
 }
 
 // BuildFindings turns analyzed containers, firewall state and daemon
 // configuration into a sorted list of findings, each with a concrete fix.
 // Containers must already have been through AnalyzeContainers.
-func BuildFindings(containers []models.Container, fw *models.FirewallInfo, daemon DaemonTCP) []models.Finding {
+func BuildFindings(containers []models.Container, fw *models.FirewallInfo, daemon []DaemonListener) []models.Finding {
 	findings := []models.Finding{}
 	published, publishedV6 := false, false
 
@@ -83,7 +83,8 @@ func BuildFindings(containers []models.Container, fw *models.FirewallInfo, daemo
 		}
 	}
 
-	for _, host := range daemon.Hosts {
+	for _, listener := range daemon {
+		host := listener.Host
 		if isLoopbackListener(host) {
 			continue
 		}
@@ -98,7 +99,7 @@ func BuildFindings(containers []models.Container, fw *models.FirewallInfo, daemo
 				"For remote access use a Docker context over SSH instead:\n" +
 				"  https://docs.docker.com/engine/security/protect-access/",
 		}
-		if daemon.TLSVerify {
+		if listener.TLSVerify {
 			f.Severity = models.RiskMedium
 			f.Title = "Docker daemon listens on TCP (TLS client verification is on)"
 			f.Detail = "Access to " + host + " depends on the client certificates staying private."

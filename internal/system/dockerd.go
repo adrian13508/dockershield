@@ -8,21 +8,26 @@ import (
 	"strings"
 )
 
-// DaemonTCP holds the TCP listeners configured for dockerd
-type DaemonTCP struct {
-	Hosts     []string
-	TLSVerify bool
+// TCPListener is one tcp:// address a Docker daemon listens on
+type TCPListener struct {
+	Host      string
+	TLSVerify bool // tlsverify is set in the same source as the listener
 }
 
 // DockerDaemonTCP looks for tcp:// listeners in /etc/docker/daemon.json and
-// on the command line of a running dockerd. Unreadable sources are skipped.
-func DockerDaemonTCP() DaemonTCP {
-	var result DaemonTCP
+// on the command line of every running dockerd. Unreadable sources are
+// skipped. TLS verification is tracked per source: a daemon that has it
+// enabled must not make another daemon's plain listener look protected.
+func DockerDaemonTCP() []TCPListener {
+	var result []TCPListener
+	add := func(hosts []string, tls bool) {
+		for _, h := range hosts {
+			result = append(result, TCPListener{Host: h, TLSVerify: tls})
+		}
+	}
 
 	if data, err := os.ReadFile("/etc/docker/daemon.json"); err == nil {
-		hosts, tls := parseDaemonJSON(data)
-		result.Hosts = append(result.Hosts, hosts...)
-		result.TLSVerify = result.TLSVerify || tls
+		add(parseDaemonJSON(data))
 	}
 
 	cmdlines, _ := filepath.Glob("/proc/[0-9]*/cmdline")
@@ -35,9 +40,7 @@ func DockerDaemonTCP() DaemonTCP {
 		if filepath.Base(args[0]) != "dockerd" {
 			continue
 		}
-		hosts, tls := parseDockerdArgs(args[1:])
-		result.Hosts = append(result.Hosts, hosts...)
-		result.TLSVerify = result.TLSVerify || tls
+		add(parseDockerdArgs(args[1:]))
 	}
 
 	return result

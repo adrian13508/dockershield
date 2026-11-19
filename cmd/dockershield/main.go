@@ -327,7 +327,11 @@ func runScan(cmd *cobra.Command, args []string) error {
 	firewallInfo := convertFirewallAnalysis(firewallAnalysis)
 
 	// Findings combine ports, container settings, daemon config and firewall state
-	findings := analyzer.BuildFindings(containers, firewallInfo, analyzer.DaemonTCP(system.DockerDaemonTCP()))
+	var daemonListeners []analyzer.DaemonListener
+	for _, l := range system.DockerDaemonTCP() {
+		daemonListeners = append(daemonListeners, analyzer.DaemonListener(l))
+	}
+	findings := analyzer.BuildFindings(containers, firewallInfo, daemonListeners)
 	analyzer.AddToSummary(&riskSummary, findings)
 	score := analyzer.CalculateSecurityScore(riskSummary)
 

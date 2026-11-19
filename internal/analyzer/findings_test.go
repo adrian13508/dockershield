@@ -45,7 +45,7 @@ func TestDualStackBindingCountsOnce(t *testing.T) {
 		t.Errorf("score = %d, want 75", got)
 	}
 
-	findings := BuildFindings(containers, nil, DaemonTCP{})
+	findings := BuildFindings(containers, nil, nil)
 	if len(findings) != 1 {
 		t.Fatalf("findings = %v, want one", findingIDs(findings))
 	}
@@ -96,7 +96,7 @@ func TestContainerSettingFindings(t *testing.T) {
 		{Name: "old", State: "exited", NetworkMode: "host", DockerSocketMounted: true},
 	}
 	summary := AnalyzeContainers(containers)
-	findings := BuildFindings(containers, nil, DaemonTCP{})
+	findings := BuildFindings(containers, nil, nil)
 	AddToSummary(&summary, findings)
 
 	if len(findings) != 2 || findings[0].ID != FindingHostNetwork || findings[1].ID != FindingSocketMounted {
@@ -108,14 +108,18 @@ func TestContainerSettingFindings(t *testing.T) {
 }
 
 func TestDockerAPITCP(t *testing.T) {
-	findings := BuildFindings(nil, nil, DaemonTCP{Hosts: []string{"tcp://0.0.0.0:2375", "tcp://127.0.0.1:2375"}})
+	findings := BuildFindings(nil, nil, []DaemonListener{{Host: "tcp://0.0.0.0:2375"}, {Host: "tcp://127.0.0.1:2375"}})
 	if len(findings) != 1 || findings[0].Severity != models.RiskCritical {
 		t.Fatalf("want one critical finding for the non-loopback listener, got %+v", findings)
 	}
 
-	findings = BuildFindings(nil, nil, DaemonTCP{Hosts: []string{"tcp://0.0.0.0:2376"}, TLSVerify: true})
-	if len(findings) != 1 || findings[0].Severity != models.RiskMedium {
-		t.Fatalf("want one medium finding with tlsverify, got %+v", findings)
+	// TLS on one daemon must not downgrade another daemon's plain listener
+	findings = BuildFindings(nil, nil, []DaemonListener{
+		{Host: "tcp://0.0.0.0:2376", TLSVerify: true},
+		{Host: "tcp://0.0.0.0:2375"},
+	})
+	if len(findings) != 2 || findings[0].Severity != models.RiskCritical || findings[1].Severity != models.RiskMedium {
+		t.Fatalf("want critical (plain) then medium (tlsverify), got %+v", findings)
 	}
 }
 
@@ -148,7 +152,7 @@ func TestFirewallFindings(t *testing.T) {
 			models.FirewallInfo{Checked: true, DockerUserFiltered: true, IPv6Checked: false}, false, false},
 	}
 	for _, c := range cases {
-		findings := BuildFindings(c.containers, &c.fw, DaemonTCP{})
+		findings := BuildFindings(c.containers, &c.fw, nil)
 		if got := has(findings, FindingUFWBypassed); got != c.wantBypass {
 			t.Errorf("%s: ufw_bypassed = %v, want %v", c.name, got, c.wantBypass)
 		}
@@ -164,7 +168,7 @@ func TestFindingsSortedBySeverity(t *testing.T) {
 		{Name: "db", State: "running", Ports: []models.PortBinding{binding("0.0.0.0", "5432", "5432")}},
 	}
 	AnalyzeContainers(containers)
-	findings := BuildFindings(containers, nil, DaemonTCP{})
+	findings := BuildFindings(containers, nil, nil)
 	if len(findings) != 2 || findings[0].Container != "db" {
 		t.Errorf("critical finding must come first: %+v", findings)
 	}

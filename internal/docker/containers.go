@@ -3,6 +3,7 @@ package docker
 import (
 	"fmt"
 	"os"
+	"path"
 	"sort"
 	"strings"
 	"time"
@@ -108,8 +109,19 @@ func mountsDockerSocket(inspect container.InspectResponse) bool {
 	return false
 }
 
-func isDockerSocket(path string) bool {
-	return path == "/var/run/docker.sock" || path == "/run/docker.sock"
+// isDockerSocket reports whether mounting source gives access to the Docker
+// (or Podman) socket: the socket itself, or a directory that contains it.
+// ponytail: compares paths as written; a socket reached through a symlink
+// or a non-default path is missed. Resolve against the daemon's unix://
+// host if that turns out to matter.
+func isDockerSocket(source string) bool {
+	source = path.Clean(source)
+	switch source {
+	case "/", "/var", "/var/run", "/run":
+		return true
+	}
+	base := path.Base(source)
+	return base == "docker.sock" || base == "podman.sock"
 }
 
 // getContainerNetworks extracts network names from container

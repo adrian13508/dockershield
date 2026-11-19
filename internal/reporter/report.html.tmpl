@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DockerShield report: {{.Hostname}}</title>
+<style>
+  :root { --critical: #b42318; --high: #c4320a; --medium: #93630b; --low: #475467; --line: #d0d5dd; --muted: #475467; }
+  * { box-sizing: border-box; }
+  body { font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: #101828; background: #fff; margin: 0 auto; padding: 32px 24px; max-width: 880px; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  h2 { font-size: 18px; margin: 32px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  h3 { font-size: 15px; margin: 0 0 6px; }
+  p { margin: 6px 0; }
+  .meta, .note { color: var(--muted); }
+  .note { font-size: 13px; }
+  .summary { display: flex; flex-wrap: wrap; gap: 12px; margin: 20px 0 0; }
+  .box { border: 1px solid var(--line); border-radius: 6px; padding: 10px 16px; min-width: 104px; }
+  .box b { display: block; font-size: 26px; line-height: 1.2; }
+  .box span { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .finding { border: 1px solid var(--line); border-left-width: 5px; border-radius: 6px; padding: 12px 16px; margin: 0 0 12px; break-inside: avoid; }
+  .finding.critical { border-left-color: var(--critical); }
+  .finding.high { border-left-color: var(--high); }
+  .finding.medium { border-left-color: var(--medium); }
+  .sev { font-size: 12px; font-weight: 700; letter-spacing: .04em; margin-right: 6px; }
+  .sev.critical { color: var(--critical); } .sev.high { color: var(--high); } .sev.medium { color: var(--medium); } .sev.low, .sev.info { color: var(--low); }
+  pre { font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: #f2f4f7; border-radius: 4px; padding: 10px 12px; margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  code { font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  footer { margin-top: 36px; padding-top: 12px; border-top: 1px solid var(--line); }
+  @media print {
+    body { padding: 0; max-width: none; font-size: 12px; }
+    h2 { break-after: avoid; }
+    pre { background: none; border: 1px solid var(--line); }
+    tr { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<h1>DockerShield report</h1>
+<p class="meta">Host <strong>{{.Hostname}}</strong> · scanned {{.Timestamp.Format "2006-01-02 15:04 MST"}}</p>
+
+<div class="summary">
+  <div class="box"><b>{{.OverallScore}}/100</b><span>Score ({{.Rating}})</span></div>
+  <div class="box"><b>{{.RiskSummary.Critical}}</b><span>Critical</span></div>
+  <div class="box"><b>{{.RiskSummary.High}}</b><span>High</span></div>
+  <div class="box"><b>{{.RiskSummary.Medium}}</b><span>Medium</span></div>
+</div>
+<p class="note">The score starts at 100 and loses 25 per critical, 10 per high and 5 per medium finding. It covers the findings below, not the SSH and other host checks.</p>
+
+<h2>Findings, by priority</h2>
+{{if .Findings}}
+{{range $i, $f := .Findings}}
+<div class="finding {{$f.Severity}}">
+  <h3>{{inc $i}}. <span class="sev {{$f.Severity}}">{{upper (print $f.Severity)}}</span>{{if $f.Container}}{{$f.Container}}: {{end}}{{$f.Title}}</h3>
+  {{if $f.Port}}<p>Port <code>{{$f.Port}}</code> on <code>{{join $f.Addresses ", "}}</code></p>{{else if $f.Addresses}}<p><code>{{join $f.Addresses ", "}}</code></p>{{end}}
+  <p>{{$f.Detail}}</p>
+  <pre>{{$f.Fix}}</pre>
+</div>
+{{end}}
+{{else}}
+<p>No findings rated medium or above.</p>
+{{end}}
+
+<h2>Published ports of running containers</h2>
+{{if .Ports}}
+<table>
+  <tr><th>Container</th><th>Host address</th><th>Host port</th><th>Container port</th><th>Scope</th><th>Rating</th></tr>
+  {{range .Ports}}
+  <tr>
+    <td>{{.Container}}</td><td><code>{{if .HostIP}}{{.HostIP}}{{else}}(all){{end}}</code></td><td>{{.HostPort}}</td><td>{{.ContainerPort}}/{{.Protocol}}</td>
+    <td>{{.AddressScope}}</td><td><span class="sev {{.RiskLevel}}">{{upper (print .RiskLevel)}}</span></td>
+  </tr>
+  {{end}}
+</table>
+{{else}}
+<p>No running container publishes a port.</p>
+{{end}}
+
+<h2>Firewall</h2>
+{{with .Firewall}}
+{{if .Checked}}
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td>UFW active</td><td>{{if .UFWActive}}yes{{else}}no{{end}}</td></tr>
+  <tr><td>Docker iptables chains present</td><td>{{if .DockerDetected}}yes{{else}}no{{end}}</td></tr>
+  <tr><td>IPv4 <code>DOCKER-USER</code> chain has filtering rules</td><td>{{if .DockerUserFiltered}}yes{{else}}no{{end}}</td></tr>
+  <tr><td>IPv6 <code>DOCKER-USER</code> chain has filtering rules</td><td>{{if not .IPv6Checked}}not checked{{else if .IPv6DockerUserFiltered}}yes{{else}}no{{end}}</td></tr>
+</table>
+<p class="note">Rules are detected, not evaluated: "yes" means the chain contains a DROP, REJECT or ufw rule, not that it covers every published port.</p>
+{{else}}
+<p>The firewall could not be checked: {{.Warning}} Findings about UFW and <code>DOCKER-USER</code> are missing from this report.</p>
+{{end}}
+{{else}}
+<p>The firewall was not checked.</p>
+{{end}}
+
+<footer class="note">
+  <p>Generated by DockerShield {{.Version}}. {{len .Containers}} container(s) inspected.</p>
+  <p>This report shows what the host is configured to publish. It does not show what is reachable from the internet: a provider firewall or NAT is not visible to the scan. Results of the SSH, fail2ban, update and other host checks are in the text and JSON output, not in this report.</p>
+</footer>
+
+</body>
+</html>

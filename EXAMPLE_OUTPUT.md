@@ -169,6 +169,8 @@ Log Analysis: [MEDIUM]
 
 
 ✓ Scan complete
+
+Several servers? A team version (history, alerts, checks from outside) is planned. Waitlist: https://adrian13508.github.io/dockershield/?ref=cli#teams  (hide: --quiet or DOCKERSHIELD_QUIET=1)
 ```
 
 ## After applying the fixes
@@ -249,6 +251,28 @@ dockershield_last_scan_timestamp_seconds 1795079277
 ## `dockershield scan --json`
 
 See [example_report.json](example_report.json), produced by the first run.
+
+## `dockershield compare`
+
+`before.json` is a scan of `test/exposed/compose.yml`, `after.json` a scan after switching
+to `compose.fixed.yml`:
+
+```
+Host:   test-vps
+Before: 2026-11-19 09:25   score 45
+After:  2026-11-19 09:25   score 95 (+50)
+
+Resolved (4)
+  [CRITICAL] dockershield-test-db-1 5432/tcp: PostgreSQL published on all interfaces
+  [HIGH]     dockershield-test-admin-1 9000/tcp: Portainer published on all interfaces
+  [HIGH]     dockershield-test-hostnet-1: Container uses host networking
+  [MEDIUM]   dockershield-test-watcher-1: Docker socket is mounted into the container
+
+New (0)
+
+Still present (1)
+  [MEDIUM]   Docker daemon listens on TCP (TLS client verification is on)
+```
 
 ## `dockershield probe`
 

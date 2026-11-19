@@ -124,6 +124,8 @@ sudo dockershield scan --json              # JSON on stdout
 sudo dockershield scan --json -o report.json
 sudo dockershield scan --prometheus        # metrics for the node_exporter textfile collector
 sudo dockershield scan --fail-on critical  # exit code 2 if a finding at or above this level exists
+sudo dockershield scan --report report.html   # also write an HTML report
+dockershield compare before.json after.json   # what changed between two JSON reports
 
 dockershield status                        # summary of the last scan, read from ~/.dockershield/state.json
 dockershield check firewall                # one category: ports, networks, firewall, containers
@@ -278,7 +280,13 @@ matches. There is no telemetry.
 
 **Files written.** Each scan writes `~/.dockershield/state.json` so that `status` can
 read it. `-o` writes the file you name. `probe` appends confirmed hosts to
-`~/.dockershield/probe_hosts`. Nothing else is written.
+`~/.dockershield/probe_hosts`. `--report` writes the file you name. Nothing else is
+written.
+
+**Notice about a team version.** The text output of `scan` ends with one line that links
+to a waitlist for a planned hosted version. It is a printed line: the tool does not
+contact that address. It is not part of JSON, Prometheus or HTML output. `--quiet` or
+`DOCKERSHIELD_QUIET=1` removes it.
 
 ## Output formats
 
@@ -336,6 +344,38 @@ groups:
       - alert: DockershieldScanStale
         expr: time() - dockershield_last_scan_timestamp_seconds > 3600
 ```
+
+**HTML** (`scan --report report.html`): one file with inline CSS, no scripts and no
+external resources. It contains the host name, the scan date, the score, the findings in
+priority order with their fixes, the published ports and the firewall checks. It prints
+to PDF from a browser. `--report` works together with any other output mode. The file is
+created with mode 0600. It does not include the SSH and other host checks.
+
+**Comparing two reports** (`compare before.json after.json`): lists the findings that
+were resolved, the new ones and the ones still present, matched by finding ID, container
+and port. `--fail-on-new` exits with code 2 if the second report has a finding the first
+did not. Output for the test project before and after applying `compose.fixed.yml`:
+
+```
+Host:   test-vps
+Before: 2026-11-19 09:25   score 45
+After:  2026-11-19 09:25   score 95 (+50)
+
+Resolved (4)
+  [CRITICAL] dockershield-test-db-1 5432/tcp: PostgreSQL published on all interfaces
+  [HIGH]     dockershield-test-admin-1 9000/tcp: Portainer published on all interfaces
+  [HIGH]     dockershield-test-hostnet-1: Container uses host networking
+  [MEDIUM]   dockershield-test-watcher-1: Docker socket is mounted into the container
+
+New (0)
+
+Still present (1)
+  [MEDIUM]   Docker daemon listens on TCP (TLS client verification is on)
+```
+
+A report written by v0.1.3 has no findings list. `compare` rates its container ports
+again with the current rules and says so; firewall and daemon findings are not available
+for such a report.
 
 **Exit codes.** `0` scan finished. `1` error. `2` `--fail-on` was set and something is
 rated at or above that level. Without Prometheus:

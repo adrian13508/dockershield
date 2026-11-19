@@ -96,7 +96,8 @@ Example:
   dockershield scan --json
   dockershield scan --output report.json
   dockershield scan --prometheus > dockershield.prom
-  dockershield scan --fail-on critical`,
+  dockershield scan --fail-on critical
+  dockershield scan --report report.html`,
 	RunE: runScan,
 }
 
@@ -209,7 +210,24 @@ var (
 	outputFile  string
 	verboseMode bool
 	failOn      string
+	reportFile  string
+	quietNotice bool
 )
+
+// waitlistURL is where the team-version waitlist lives. The ref parameter
+// tells the sign-up form that the visitor came from the CLI.
+const waitlistURL = "https://adrian13508.github.io/dockershield/?ref=cli#teams"
+
+// waitlistNotice returns the one line shown at the end of a text-mode scan,
+// or "" when it is switched off. It is never part of JSON, Prometheus or
+// HTML output.
+func waitlistNotice(quiet bool, env string) string {
+	if quiet || (env != "" && env != "0" && !strings.EqualFold(env, "false")) {
+		return ""
+	}
+	return "Several servers? A team version (history, alerts, checks from outside) is planned. Waitlist: " +
+		waitlistURL + "  (hide: --quiet or DOCKERSHIELD_QUIET=1)"
+}
 
 // versionCheck enables the GitHub release lookup in `version --check`
 var versionCheck bool
@@ -241,6 +259,8 @@ func init() {
 	scanCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write output to file")
 	scanCmd.Flags().BoolVarP(&verboseMode, "verbose", "v", false, "Enable verbose logging")
 	scanCmd.Flags().StringVar(&failOn, "fail-on", "", "Exit with code 2 when findings at or above this severity exist (critical, high, medium, low)")
+	scanCmd.Flags().StringVar(&reportFile, "report", "", "Also write a self-contained HTML report to this file")
+	scanCmd.Flags().BoolVarP(&quietNotice, "quiet", "q", false, "Do not print the notice about the planned team version")
 	scanCmd.MarkFlagsMutuallyExclusive("json", "prometheus")
 
 	versionCmd.Flags().BoolVar(&versionCheck, "check", false, "Check GitHub for a newer release (makes a network request)")
@@ -360,6 +380,13 @@ func runScan(cmd *cobra.Command, args []string) error {
 	// Save state for status command
 	saveState(containers, networks, firewallInfo, findings, sshConfig, fail2banStatus, systemStatus, riskSummary, score, quietMode)
 
+	// HTML report, in addition to whichever output mode is active
+	if reportFile != "" {
+		if err := writeHTMLReport(reportFile, containers, networks, firewallInfo, findings, riskSummary, score); err != nil {
+			return err
+		}
+	}
+
 	// Handle JSON output
 	if jsonOutput {
 		if err := outputJSON(containers, networks, firewallInfo, findings, sshConfig, fail2banStatus, systemStatus,
@@ -437,8 +464,46 @@ func runScan(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println("\n✓ Scan complete")
+	if notice := waitlistNotice(quietNotice, os.Getenv("DOCKERSHIELD_QUIET")); notice != "" {
+		fmt.Println("\n" + notice)
+	}
 
 	exitOnFindings(riskSummary)
+	return nil
+}
+
+// writeHTMLReport writes the scan as one HTML file
+func writeHTMLReport(
+	path string,
+	containers []models.Container,
+	networks []models.NetworkInfo,
+	firewallInfo *models.FirewallInfo,
+	findings []models.Finding,
+	riskSummary models.RiskSummary,
+	score int,
+) error {
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "unknown"
+	}
+	html, err := reporter.GenerateHTML(models.ScanResult{
+		Timestamp:    time.Now(),
+		Hostname:     hostname,
+		Containers:   containers,
+		Networks:     networks,
+		Firewall:     firewallInfo,
+		Findings:     findings,
+		RiskSummary:  riskSummary,
+		OverallScore: score,
+	}, version)
+	if err != nil {
+		return fmt.Errorf("failed to render HTML report: %w", err)
+	}
+	// 0600: the report describes open ports and belongs to whoever ran the scan
+	if err := os.WriteFile(path, html, 0600); err != nil {
+		return fmt.Errorf("failed to write HTML report: %w", err)
+	}
+	fmt.Fprintf(os.Stderr, "✓ HTML report saved to %s\n", path)
 	return nil
 }
 

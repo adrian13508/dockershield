@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI workflow: gofmt, `go vet`, `go test -race`, golangci-lint, shellcheck on every pull request
 - Issue templates, `HOW_THIS_IS_BUILT.md`, test environment in `test/exposed/compose.yml`
 
+### Added (reports)
+- `scan --report report.html`: self-contained HTML report (inline CSS, no scripts, no external resources) with score, findings in priority order, fixes, published ports and firewall checks. Prints to PDF
+- `compare before.json after.json`: resolved, new and remaining findings between two JSON reports; `--fail-on-new` for CI
+- Text output of `scan` ends with one line linking to the waitlist for a planned team version. Not printed in JSON, Prometheus or HTML output. `--quiet` or `DOCKERSHIELD_QUIET=1` removes it. No network request is made
+
 ### Added (probe)
 - `probe <host>`: run from another machine, connects to TCP ports of a host you own and reports open, closed or filtered per address, IPv4 and IPv6 separately
 - `probe --from-report report.json` checks exactly the ports a scan found published and prints both views: "published and confirmed from outside" or "published but blocked on the way"

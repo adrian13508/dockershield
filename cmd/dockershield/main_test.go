@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/adrian13508/dockershield/pkg/models"
@@ -35,5 +36,28 @@ func TestVersionCheckIsOptIn(t *testing.T) {
 	}
 	if f.DefValue != "false" {
 		t.Errorf("version --check default = %s, want false", f.DefValue)
+	}
+}
+
+func TestWaitlistNotice(t *testing.T) {
+	notice := waitlistNotice(false, "")
+	if !strings.Contains(notice, waitlistURL) || strings.Contains(notice, "\n") {
+		t.Errorf("notice must be one line with the waitlist link: %q", notice)
+	}
+	if !strings.Contains(waitlistURL, "ref=cli") {
+		t.Error("the CLI link must carry its own source parameter")
+	}
+	for _, off := range []struct {
+		quiet bool
+		env   string
+	}{{true, ""}, {false, "1"}, {false, "true"}, {false, "yes"}} {
+		if got := waitlistNotice(off.quiet, off.env); got != "" {
+			t.Errorf("notice shown with quiet=%v env=%q", off.quiet, off.env)
+		}
+	}
+	for _, on := range []string{"0", "false"} {
+		if waitlistNotice(false, on) == "" {
+			t.Errorf("DOCKERSHIELD_QUIET=%s must not hide the notice", on)
+		}
 	}
 }

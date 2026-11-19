@@ -46,8 +46,9 @@ var dangerousPorts = map[int]PortInfo{
 	10250: {10250, "Kubelet", "admin", models.RiskHigh, "Kubernetes Kubelet API"},
 
 	// MEDIUM: Standard web services
-	80:   {80, "HTTP", "web", models.RiskMedium, "HTTP web server"},
-	443:  {443, "HTTPS", "web", models.RiskMedium, "HTTPS web server"},
+	// 80/443 are normally meant to be public (reverse proxy), so they rate low
+	80:   {80, "HTTP", "web", models.RiskLow, "HTTP web server"},
+	443:  {443, "HTTPS", "web", models.RiskLow, "HTTPS web server"},
 	8000: {8000, "HTTP Alt", "web", models.RiskMedium, "Development web server"},
 	3001: {3001, "Node.js", "web", models.RiskMedium, "Node.js app (common dev port)"},
 	5000: {5000, "Flask", "web", models.RiskMedium, "Flask/Python app"},
@@ -84,22 +85,25 @@ func AnalyzePortRisk(binding *models.PortBinding) {
 	// Look up port in our database
 	portInfo, isKnown := dangerousPorts[portNum]
 
-	// Risk calculation based on exposure + port type
-	switch binding.ExposureType {
-	case models.ExposurePublic:
-		// Public exposure (0.0.0.0 or ::)
+	service := "Port"
+	if isKnown {
+		service = portInfo.Service
+	}
+
+	switch {
+	case binding.ExposureType == models.ExposurePublic, binding.AddressScope == models.ScopePublicAddress:
+		// Reachable from other machines unless a firewall in front says otherwise
+		binding.RiskLevel = models.RiskMedium
 		if isKnown {
-			// Known dangerous port exposed publicly = use base risk or higher
 			binding.RiskLevel = portInfo.BaseRisk
-			binding.RiskReason = fmt.Sprintf("%s exposed to public internet", portInfo.Service)
+		}
+		if binding.ExposureType == models.ExposurePublic {
+			binding.RiskReason = service + " published on all interfaces"
 		} else {
-			// Unknown port exposed publicly = medium risk
-			binding.RiskLevel = models.RiskMedium
-			binding.RiskReason = "Port exposed to public internet"
+			binding.RiskReason = fmt.Sprintf("%s published on public address %s", service, binding.HostIP)
 		}
 
-	case models.ExposureLocalhost:
-		// Localhost only = generally safe
+	case binding.ExposureType == models.ExposureLocalhost:
 		binding.RiskLevel = models.RiskLow
 		if isKnown {
 			binding.RiskReason = fmt.Sprintf("%s (localhost only - OK)", portInfo.Service)
@@ -107,14 +111,14 @@ func AnalyzePortRisk(binding *models.PortBinding) {
 			binding.RiskReason = "Localhost only"
 		}
 
-	case models.ExposureSpecificIP:
-		// Specific IP = lower risk than public, but still worth noting
+	default:
+		// Private or VPN address: reachable only from that network
 		if isKnown && portInfo.BaseRisk == models.RiskCritical {
 			binding.RiskLevel = models.RiskMedium
-			binding.RiskReason = fmt.Sprintf("%s on specific IP (review firewall)", portInfo.Service)
+			binding.RiskReason = fmt.Sprintf("%s on private or VPN address %s (check who can reach that network)", portInfo.Service, binding.HostIP)
 		} else {
 			binding.RiskLevel = models.RiskLow
-			binding.RiskReason = "Bound to specific IP"
+			binding.RiskReason = "Bound to private or VPN address"
 		}
 	}
 }

@@ -2,6 +2,7 @@ package docker
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/adrian13508/dockershield/pkg/models"
 	"github.com/docker/docker/api/types/network"
@@ -21,7 +22,7 @@ func (c *Client) ListNetworks() ([]models.NetworkInfo, error) {
 		// Inspect network for detailed info
 		inspect, err := c.cli.NetworkInspect(c.ctx, net.ID, network.InspectOptions{})
 		if err != nil {
-			fmt.Printf("Warning: failed to inspect network %s: %v\n", net.Name, err)
+			fmt.Fprintf(os.Stderr, "Warning: failed to inspect network %s: %v\n", net.Name, err)
 			continue
 		}
 

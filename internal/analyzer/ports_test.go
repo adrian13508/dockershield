@@ -24,7 +24,7 @@ func TestPortRiskAnalysis(t *testing.T) {
 				ExposureType:  models.ExposurePublic,
 			},
 			expectedRisk:   models.RiskCritical,
-			expectedReason: "PostgreSQL exposed to public internet",
+			expectedReason: "PostgreSQL published on all interfaces",
 		},
 		{
 			name: "MySQL on localhost - LOW",
@@ -39,7 +39,7 @@ func TestPortRiskAnalysis(t *testing.T) {
 			expectedReason: "MySQL (localhost only - OK)",
 		},
 		{
-			name: "HTTP on public internet - MEDIUM",
+			name: "HTTP on all interfaces - LOW (web ports are meant to be public)",
 			binding: models.PortBinding{
 				HostIP:        "0.0.0.0",
 				HostPort:      "80",
@@ -47,8 +47,8 @@ func TestPortRiskAnalysis(t *testing.T) {
 				Protocol:      "tcp",
 				ExposureType:  models.ExposurePublic,
 			},
-			expectedRisk:   models.RiskMedium,
-			expectedReason: "HTTP exposed to public internet",
+			expectedRisk:   models.RiskLow,
+			expectedReason: "HTTP published on all interfaces",
 		},
 		{
 			name: "Redis on public internet - CRITICAL",
@@ -60,7 +60,7 @@ func TestPortRiskAnalysis(t *testing.T) {
 				ExposureType:  models.ExposurePublic,
 			},
 			expectedRisk:   models.RiskCritical,
-			expectedReason: "Redis exposed to public internet",
+			expectedReason: "Redis published on all interfaces",
 		},
 		{
 			name: "Unknown port on public internet - MEDIUM",
@@ -72,7 +72,7 @@ func TestPortRiskAnalysis(t *testing.T) {
 				ExposureType:  models.ExposurePublic,
 			},
 			expectedRisk:   models.RiskMedium,
-			expectedReason: "Port exposed to public internet",
+			expectedReason: "Port published on all interfaces",
 		},
 	}
 

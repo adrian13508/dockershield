@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/adrian13508/dockershield/internal/analyzer"
 	"github.com/adrian13508/dockershield/internal/docker"
 )
 
@@ -23,6 +24,8 @@ func CheckContainers(opts CheckOptions) (*CategoryResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to list containers: %w", err)
 	}
+
+	analyzer.AnalyzeContainers(containers)
 
 	// Filter by container if specified
 	if opts.Container != "" {

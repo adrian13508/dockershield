@@ -23,3 +23,14 @@ jobs:
         with:
           version: v2.1.6
       - run: shellcheck install.sh
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go build -o dockershield ./cmd/dockershield
+      - name: Scan deliberately misconfigured containers
+        run: DOCKERSHIELD_BIN=$PWD/dockershield go test -v -tags integration ./test/

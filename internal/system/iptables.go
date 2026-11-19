@@ -2,140 +2,136 @@ package system
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"sort"
 	"strings"
 )
 
-// IptablesRule represents a parsed iptables rule
-type IptablesRule struct {
-	Chain  string // e.g., "DOCKER", "DOCKER-USER", "INPUT"
-	Rule   string // The full rule text
-	Action string // e.g., "ACCEPT", "DROP", "REJECT"
-}
-
 // IptablesAnalysis contains the results of iptables analysis
 type IptablesAnalysis struct {
-	HasDocker          bool     // Docker chains detected
-	DockerChains       []string // List of Docker chains found
-	DockerUserRules    []string // Rules in DOCKER-USER chain
+	HasDocker          bool     // Docker chains detected (IPv4)
+	DockerChains       []string // List of Docker chains found (IPv4)
+	DockerUserRules    []string // Rules in the IPv4 DOCKER-USER chain
+	DockerUserFiltered bool     // IPv4 DOCKER-USER has DROP/REJECT/ufw rules
 	UFWActive          bool     // Is UFW running
-	DockerBypassingUFW bool     // Is Docker bypassing UFW
+	DockerBypassingUFW bool     // UFW active, Docker chains present, DOCKER-USER not filtering
 	RequiresSudo       bool     // Did we need sudo to read iptables
 	ErrorMessage       string   // Error if analysis failed
+
+	IPv6Checked            bool // ip6tables-save could be read
+	IPv6DockerUserFiltered bool // IPv6 DOCKER-USER has DROP/REJECT/ufw rules
 }
 
 // AnalyzeIptables reads and analyzes iptables rules
 func AnalyzeIptables() *IptablesAnalysis {
-	analysis := &IptablesAnalysis{}
-
-	// Try to read iptables rules
-	rules, requiresSudo, err := readIptablesRules()
+	v4, requiresSudo, err := readRules("iptables-save")
 	if err != nil {
-		analysis.ErrorMessage = err.Error()
-		return analysis
+		return &IptablesAnalysis{ErrorMessage: err.Error(), RequiresSudo: requiresSudo}
 	}
+	v6, _, err6 := readRules("ip6tables-save")
 
+	analysis := analyze(v4, v6, err6 == nil, ufwActive())
 	analysis.RequiresSudo = requiresSudo
-
-	// Parse rules
-	analysis.parseRules(rules)
-
-	// Check UFW status
-	analysis.checkUFW()
-
-	// Determine if Docker is bypassing UFW
-	if analysis.UFWActive && analysis.HasDocker {
-		analysis.DockerBypassingUFW = true
-	}
-
 	return analysis
 }
 
-// readIptablesRules attempts to read iptables rules
-func readIptablesRules() (string, bool, error) {
-	// Try without sudo first
-	cmd := exec.Command("iptables-save")
-	output, err := cmd.CombinedOutput()
+// analyze derives the firewall state from saved rule sets. Pure function.
+func analyze(v4, v6 string, v6ok, ufw bool) *IptablesAnalysis {
+	a := &IptablesAnalysis{UFWActive: ufw, IPv6Checked: v6ok}
 
+	a.DockerChains, a.DockerUserRules = parseRules(v4)
+	a.HasDocker = len(a.DockerChains) > 0
+	a.DockerUserFiltered = filters(a.DockerUserRules)
+
+	if v6ok {
+		_, v6Rules := parseRules(v6)
+		a.IPv6DockerUserFiltered = filters(v6Rules)
+	}
+
+	// Docker's rules are evaluated before UFW's. Unless the user has put
+	// filtering rules into DOCKER-USER (which is what ufw-docker does),
+	// UFW does not see traffic to published ports.
+	a.DockerBypassingUFW = a.UFWActive && a.HasDocker && !a.DockerUserFiltered
+	return a
+}
+
+// readRules runs iptables-save or ip6tables-save, falling back to sudo -n
+func readRules(command string) (string, bool, error) {
+	output, err := exec.Command(command).CombinedOutput()
 	if err == nil && len(output) > 0 {
-		// Success without sudo
 		return string(output), false, nil
 	}
 
-	// Try with sudo
-	cmd = exec.Command("sudo", "-n", "iptables-save")
-	output, err = cmd.CombinedOutput()
-
+	output, err = exec.Command("sudo", "-n", command).CombinedOutput()
 	if err != nil {
-		// Check if iptables-save exists
 		if strings.Contains(err.Error(), "not found") || strings.Contains(string(output), "not found") {
-			return "", false, fmt.Errorf("iptables-save not found (iptables not installed?)")
+			return "", false, fmt.Errorf("%s not found (iptables not installed?)", command)
 		}
-		// Permission denied or sudo not available
 		return "", true, fmt.Errorf("insufficient permissions (run with sudo or configure passwordless sudo)")
 	}
-
 	return string(output), true, nil
 }
 
-// parseRules extracts Docker-related information from iptables rules
-func (a *IptablesAnalysis) parseRules(rules string) {
-	lines := strings.Split(rules, "\n")
-	dockerChainsSeen := make(map[string]bool)
-
-	for _, line := range lines {
+// parseRules extracts Docker chain names and DOCKER-USER rules from
+// iptables-save output
+func parseRules(rules string) (chains []string, dockerUserRules []string) {
+	seen := map[string]bool{}
+	for _, line := range strings.Split(rules, "\n") {
 		line = strings.TrimSpace(line)
-
-		// Skip empty lines and comments
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-
-		// Check for chain definitions
-		if strings.HasPrefix(line, ":DOCKER") {
-			chainName := extractChainName(line)
-			dockerChainsSeen[chainName] = true
-		}
-
-		// Check for DOCKER-USER rules
-		if strings.HasPrefix(line, "-A DOCKER-USER") {
-			a.DockerUserRules = append(a.DockerUserRules, line)
+		switch {
+		case strings.HasPrefix(line, ":DOCKER"):
+			// Format: ":DOCKER-USER - [0:0]"
+			if name := strings.TrimPrefix(strings.Fields(line)[0], ":"); !seen[name] {
+				seen[name] = true
+				chains = append(chains, name)
+			}
+		case strings.HasPrefix(line, "-A DOCKER-USER"):
+			dockerUserRules = append(dockerUserRules, line)
 		}
 	}
-
-	// Set Docker chains
-	for chain := range dockerChainsSeen {
-		a.DockerChains = append(a.DockerChains, chain)
-	}
-
-	a.HasDocker = len(a.DockerChains) > 0
+	sort.Strings(chains)
+	return chains, dockerUserRules
 }
 
-// extractChainName gets the chain name from a chain definition line
-func extractChainName(line string) string {
-	// Format: ":DOCKER-USER ACCEPT [0:0]"
-	parts := strings.Fields(line)
-	if len(parts) > 0 {
-		return strings.TrimPrefix(parts[0], ":")
+// filters reports whether any DOCKER-USER rule drops, rejects or hands
+// traffic to a ufw chain. It does not evaluate what the rules match.
+func filters(dockerUserRules []string) bool {
+	for _, rule := range dockerUserRules {
+		fields := strings.Fields(rule)
+		for i, f := range fields[:len(fields)-1] {
+			if f != "-j" && f != "-g" {
+				continue
+			}
+			target := fields[i+1]
+			if target == "DROP" || target == "REJECT" || strings.HasPrefix(target, "ufw-") {
+				return true
+			}
+		}
 	}
-	return ""
+	return false
 }
 
-// checkUFW determines if UFW is active
-func (a *IptablesAnalysis) checkUFW() {
-	// Try to check UFW status
-	cmd := exec.Command("ufw", "status")
-	output, err := cmd.CombinedOutput()
-
-	if err != nil {
-		// UFW might not be installed
-		a.UFWActive = false
-		return
+// ufwActive determines if UFW is enabled. `ufw status` needs root, so the
+// config file is used as a fallback.
+func ufwActive() bool {
+	output, err := exec.Command("ufw", "status").CombinedOutput()
+	if err == nil {
+		return strings.Contains(string(output), "Status: active")
 	}
+	conf, err := os.ReadFile("/etc/ufw/ufw.conf")
+	return err == nil && ufwEnabledInConf(string(conf))
+}
 
-	// Check if output contains "Status: active"
-	outputStr := string(output)
-	a.UFWActive = strings.Contains(outputStr, "Status: active")
+// ufwEnabledInConf parses /etc/ufw/ufw.conf
+func ufwEnabledInConf(conf string) bool {
+	for _, line := range strings.Split(conf, "\n") {
+		line = strings.ToLower(strings.TrimSpace(line))
+		if strings.HasPrefix(line, "enabled=") {
+			return strings.Trim(strings.TrimPrefix(line, "enabled="), `"'`) == "yes"
+		}
+	}
+	return false
 }
 
 // GetFirewallWarning returns a warning message if there are firewall issues
@@ -143,15 +139,9 @@ func (a *IptablesAnalysis) GetFirewallWarning() string {
 	if a.ErrorMessage != "" {
 		return fmt.Sprintf("Could not analyze firewall: %s", a.ErrorMessage)
 	}
-
-	if !a.HasDocker {
-		return ""
-	}
-
 	if a.DockerBypassingUFW {
-		return "⚠️  Docker is bypassing UFW! Port bindings (0.0.0.0) are exposed despite UFW rules."
+		return "UFW is active, but Docker's iptables rules are evaluated first and the DOCKER-USER chain has no filtering rules. UFW rules do not apply to published container ports."
 	}
-
 	return ""
 }
 
@@ -163,15 +153,12 @@ func (a *IptablesAnalysis) GetRecommendation() string {
 
 	return `Docker bypasses UFW by default. To fix this:
 
-1. Use DOCKER-USER chain for firewall rules:
-   sudo iptables -I DOCKER-USER -j DROP
-   sudo iptables -I DOCKER-USER -s 10.0.0.0/8 -j ACCEPT
-   sudo iptables -I DOCKER-USER -s 172.16.0.0/12 -j ACCEPT
-   sudo iptables -I DOCKER-USER -s 192.168.0.0/16 -j ACCEPT
-
-2. OR bind ports to localhost and use reverse proxy:
+1. Bind ports to localhost and use a reverse proxy:
    docker run -p 127.0.0.1:8080:8080 myapp
 
-3. OR configure Docker to respect UFW:
+2. OR filter in the DOCKER-USER chain:
+   https://docs.docker.com/engine/network/packet-filtering-firewalls/#docker-and-ufw
+
+3. OR let a tool manage those rules:
    https://github.com/chaifeng/ufw-docker`
 }

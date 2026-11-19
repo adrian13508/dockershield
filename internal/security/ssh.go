@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"regexp"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -76,51 +76,79 @@ func AnalyzeSSHConfig() *SSHConfig {
 
 // parseConfig reads and parses the SSH configuration file
 func (s *SSHConfig) parseConfig() error {
-	file, err := os.Open(s.ConfigFile)
+	values := map[string]string{}
+	if err := readSSHDDirectives(s.ConfigFile, values, 0); err != nil {
+		return err
+	}
+
+	if port, err := strconv.Atoi(values["port"]); err == nil {
+		s.Port = port
+	}
+	set := func(field *string, keys ...string) {
+		for _, key := range keys {
+			if v, ok := values[key]; ok {
+				*field = strings.ToLower(v)
+				return
+			}
+		}
+	}
+	set(&s.PermitRootLogin, "permitrootlogin")
+	set(&s.PasswordAuth, "passwordauthentication")
+	set(&s.PubkeyAuth, "pubkeyauthentication")
+	set(&s.PermitEmptyPassword, "permitemptypasswords")
+	set(&s.ChallengeResponse, "kbdinteractiveauthentication", "challengeresponseauthentication")
+	return nil
+}
+
+// readSSHDDirectives collects global sshd_config directives into values,
+// following Include. As in sshd, the first value seen for a keyword wins.
+// Reading of a file stops at the first Match block: what follows applies
+// only to some connections and is not evaluated.
+func readSSHDDirectives(path string, values map[string]string, depth int) error {
+	file, err := os.Open(path)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	commentRegex := regexp.MustCompile(`^\s*#`)
-
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
-
-		// Skip comments and empty lines
-		if line == "" || commentRegex.MatchString(line) {
+		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
 
-		// Split line into directive and value
-		parts := strings.Fields(line)
+		// "Keyword value" or "Keyword=value"
+		parts := strings.Fields(strings.Replace(line, "=", " ", 1))
 		if len(parts) < 2 {
 			continue
 		}
+		keyword := strings.ToLower(parts[0])
 
-		directive := strings.ToLower(parts[0])
-		value := parts[1]
-
-		// Parse relevant directives
-		switch directive {
-		case "port":
-			if port, err := strconv.Atoi(value); err == nil {
-				s.Port = port
+		switch keyword {
+		case "match":
+			return nil
+		case "include":
+			if depth >= 8 { // ponytail: fixed depth limit instead of loop detection
+				continue
 			}
-		case "permitrootlogin":
-			s.PermitRootLogin = strings.ToLower(value)
-		case "passwordauthentication":
-			s.PasswordAuth = strings.ToLower(value)
-		case "pubkeyauthentication":
-			s.PubkeyAuth = strings.ToLower(value)
-		case "permitemptypasswords":
-			s.PermitEmptyPassword = strings.ToLower(value)
-		case "challengeresponseauthentication":
-			s.ChallengeResponse = strings.ToLower(value)
+			for _, pattern := range parts[1:] {
+				pattern = strings.Trim(pattern, `"`)
+				if !filepath.IsAbs(pattern) {
+					pattern = filepath.Join("/etc/ssh", pattern)
+				}
+				matches, _ := filepath.Glob(pattern) // sorted, like sshd
+				for _, match := range matches {
+					// An unreadable include is skipped; the main file decides
+					_ = readSSHDDirectives(match, values, depth+1)
+				}
+			}
+		default:
+			if _, seen := values[keyword]; !seen {
+				values[keyword] = strings.Trim(parts[1], `"`)
+			}
 		}
 	}
-
 	return scanner.Err()
 }
 

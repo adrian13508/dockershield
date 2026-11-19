@@ -1,48 +1,9 @@
 {
-  "timestamp": "2026-11-19T08:46:30.099872971Z",
+  "timestamp": "2026-11-19T09:07:57.370367511Z",
   "hostname": "test-vps",
   "containers": [
     {
-      "id": "5949bd946dd4",
-      "name": "dockershield-test-web-1",
-      "image": "nginx:alpine",
-      "state": "running",
-      "network_mode": "dockershield-test_default",
-      "ports": [
-        {
-          "host_ip": "0.0.0.0",
-          "host_port": "8080",
-          "container_port": "80",
-          "protocol": "tcp",
-          "exposure_type": "public",
-          "risk_level": "medium",
-          "risk_reason": "HTTP exposed to public internet"
-        },
-        {
-          "host_ip": "::",
-          "host_port": "8080",
-          "container_port": "80",
-          "protocol": "tcp",
-          "exposure_type": "public",
-          "risk_level": "medium",
-          "risk_reason": "HTTP exposed to public internet"
-        }
-      ],
-      "networks": [
-        "dockershield-test_default"
-      ],
-      "highest_risk": "medium",
-      "risk_count": {
-        "critical": 0,
-        "high": 0,
-        "medium": 2,
-        "low": 0,
-        "info": 0
-      },
-      "created_at": "0001-01-01T00:00:00Z"
-    },
-    {
-      "id": "74b5f2db4fda",
+      "id": "6af1bdbee901",
       "name": "dockershield-test-db-1",
       "image": "postgres:16-alpine",
       "state": "running",
@@ -54,8 +15,9 @@
           "container_port": "5432",
           "protocol": "tcp",
           "exposure_type": "public",
+          "address_scope": "all_interfaces",
           "risk_level": "critical",
-          "risk_reason": "PostgreSQL exposed to public internet"
+          "risk_reason": "PostgreSQL published on all interfaces"
         },
         {
           "host_ip": "::",
@@ -63,8 +25,9 @@
           "container_port": "5432",
           "protocol": "tcp",
           "exposure_type": "public",
+          "address_scope": "all_interfaces",
           "risk_level": "critical",
-          "risk_reason": "PostgreSQL exposed to public internet"
+          "risk_reason": "PostgreSQL published on all interfaces"
         }
       ],
       "networks": [
@@ -72,16 +35,17 @@
       ],
       "highest_risk": "critical",
       "risk_count": {
-        "critical": 2,
+        "critical": 1,
         "high": 0,
         "medium": 0,
         "low": 0,
         "info": 0
       },
-      "created_at": "0001-01-01T00:00:00Z"
+      "created_at": "2026-11-19T09:07:56.75879876Z",
+      "docker_socket_mounted": false
     },
     {
-      "id": "7e07aee5178b",
+      "id": "05b32b2549f7",
       "name": "dockershield-test-cache-1",
       "image": "redis:7-alpine",
       "state": "running",
@@ -93,6 +57,7 @@
           "container_port": "6379",
           "protocol": "tcp",
           "exposure_type": "localhost",
+          "address_scope": "localhost",
           "risk_level": "low",
           "risk_reason": "Redis (localhost only - OK)"
         }
@@ -108,12 +73,139 @@
         "low": 1,
         "info": 0
       },
-      "created_at": "0001-01-01T00:00:00Z"
+      "created_at": "2026-11-19T09:07:56.758666094Z",
+      "docker_socket_mounted": false
+    },
+    {
+      "id": "aed384eeb96a",
+      "name": "dockershield-test-admin-1",
+      "image": "nginx:alpine",
+      "state": "running",
+      "network_mode": "dockershield-test_default",
+      "ports": [
+        {
+          "host_ip": "0.0.0.0",
+          "host_port": "9000",
+          "container_port": "9000",
+          "protocol": "tcp",
+          "exposure_type": "public",
+          "address_scope": "all_interfaces",
+          "risk_level": "high",
+          "risk_reason": "Portainer published on all interfaces"
+        },
+        {
+          "host_ip": "::",
+          "host_port": "9000",
+          "container_port": "9000",
+          "protocol": "tcp",
+          "exposure_type": "public",
+          "address_scope": "all_interfaces",
+          "risk_level": "high",
+          "risk_reason": "Portainer published on all interfaces"
+        }
+      ],
+      "networks": [
+        "dockershield-test_default"
+      ],
+      "highest_risk": "high",
+      "risk_count": {
+        "critical": 0,
+        "high": 1,
+        "medium": 0,
+        "low": 0,
+        "info": 0
+      },
+      "created_at": "2026-11-19T09:07:56.75851701Z",
+      "docker_socket_mounted": false
+    },
+    {
+      "id": "be3157a6e5fe",
+      "name": "dockershield-test-web-1",
+      "image": "nginx:alpine",
+      "state": "running",
+      "network_mode": "dockershield-test_default",
+      "ports": [
+        {
+          "host_ip": "0.0.0.0",
+          "host_port": "8080",
+          "container_port": "80",
+          "protocol": "tcp",
+          "exposure_type": "public",
+          "address_scope": "all_interfaces",
+          "risk_level": "low",
+          "risk_reason": "HTTP published on all interfaces"
+        },
+        {
+          "host_ip": "::",
+          "host_port": "8080",
+          "container_port": "80",
+          "protocol": "tcp",
+          "exposure_type": "public",
+          "address_scope": "all_interfaces",
+          "risk_level": "low",
+          "risk_reason": "HTTP published on all interfaces"
+        }
+      ],
+      "networks": [
+        "dockershield-test_default"
+      ],
+      "highest_risk": "low",
+      "risk_count": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 1,
+        "info": 0
+      },
+      "created_at": "2026-11-19T09:07:56.758165677Z",
+      "docker_socket_mounted": false
+    },
+    {
+      "id": "83dbeb5c0aa5",
+      "name": "dockershield-test-watcher-1",
+      "image": "alpine:3",
+      "state": "running",
+      "network_mode": "dockershield-test_default",
+      "ports": null,
+      "networks": [
+        "dockershield-test_default"
+      ],
+      "highest_risk": "info",
+      "risk_count": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "info": 0
+      },
+      "created_at": "2026-11-19T09:07:56.756788385Z",
+      "docker_socket_mounted": true
+    },
+    {
+      "id": "459a0884affc",
+      "name": "dockershield-test-hostnet-1",
+      "image": "nginx:alpine",
+      "state": "running",
+      "network_mode": "host",
+      "ports": null,
+      "networks": [
+        "host"
+      ],
+      "highest_risk": "info",
+      "risk_count": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "info": 0
+      },
+      "created_at": "2026-11-19T09:07:56.740749177Z",
+      "docker_socket_mounted": false
     }
   ],
   "networks": [
     {
-      "id": "20d0a40dc15f",
+      "id": "9c18da9af65a",
       "name": "none",
       "driver": "null",
       "subnet": "",
@@ -121,15 +213,17 @@
       "containers": null
     },
     {
-      "id": "2af87da866db",
+      "id": "2684828eb0ac",
       "name": "host",
       "driver": "host",
       "subnet": "",
       "gateway": "",
-      "containers": null
+      "containers": [
+        "459a0884affc"
+      ]
     },
     {
-      "id": "b070dcdb689c",
+      "id": "2e2ce8f29a76",
       "name": "bridge",
       "driver": "bridge",
       "subnet": "172.18.0.0/16",
@@ -137,15 +231,17 @@
       "containers": null
     },
     {
-      "id": "ef08c2834f6a",
+      "id": "9ffe459254ec",
       "name": "dockershield-test_default",
       "driver": "bridge",
       "subnet": "172.19.0.0/16",
       "gateway": "172.19.0.1",
       "containers": [
-        "5949bd946dd4",
-        "74b5f2db4fda",
-        "7e07aee5178b"
+        "be3157a6e5fe",
+        "05b32b2549f7",
+        "6af1bdbee901",
+        "83dbeb5c0aa5",
+        "aed384eeb96a"
       ]
     }
   ],
@@ -154,13 +250,17 @@
     "docker_detected": true,
     "docker_bypassing_ufw": false,
     "docker_chains": [
-      "DOCKER-USER",
       "DOCKER",
       "DOCKER-BRIDGE",
       "DOCKER-CT",
       "DOCKER-FORWARD",
-      "DOCKER-INTERNAL"
-    ]
+      "DOCKER-INTERNAL",
+      "DOCKER-USER"
+    ],
+    "checked": true,
+    "docker_user_filtered": false,
+    "ipv6_checked": true,
+    "ipv6_docker_user_filtered": false
   },
   "security_checks": {
     "ssh": {
@@ -213,116 +313,12 @@
     "hardening": {
       "sysctl_checks": [
         {
-          "parameter": "net.ipv4.conf.default.accept_source_route",
-          "current_value": "1",
-          "recommended_value": "0",
-          "compliant": false,
-          "severity": "HIGH",
-          "description": "Disable source packet routing on new interfaces"
-        },
-        {
-          "parameter": "net.ipv4.conf.default.secure_redirects",
+          "parameter": "net.ipv4.conf.default.accept_redirects",
           "current_value": "1",
           "recommended_value": "0",
           "compliant": false,
           "severity": "MEDIUM",
-          "description": "Disable secure ICMP redirects on new interfaces"
-        },
-        {
-          "parameter": "net.ipv4.conf.all.log_martians",
-          "current_value": "0",
-          "recommended_value": "1",
-          "compliant": false,
-          "severity": "LOW",
-          "description": "Log suspicious packets (martian packets)"
-        },
-        {
-          "parameter": "net.ipv4.conf.default.log_martians",
-          "current_value": "0",
-          "recommended_value": "1",
-          "compliant": false,
-          "severity": "LOW",
-          "description": "Log suspicious packets on new interfaces"
-        },
-        {
-          "parameter": "kernel.dmesg_restrict",
-          "current_value": "1",
-          "recommended_value": "1",
-          "compliant": true,
-          "severity": "MEDIUM",
-          "description": "Restrict dmesg access to root only"
-        },
-        {
-          "parameter": "fs.suid_dumpable",
-          "current_value": "0",
-          "recommended_value": "0",
-          "compliant": true,
-          "severity": "HIGH",
-          "description": "Disable core dumps for SUID programs (prevents info leakage)"
-        },
-        {
-          "parameter": "fs.protected_symlinks",
-          "current_value": "1",
-          "recommended_value": "1",
-          "compliant": true,
-          "severity": "MEDIUM",
-          "description": "Protect symlinks from exploitation"
-        },
-        {
-          "parameter": "net.ipv4.conf.default.send_redirects",
-          "current_value": "1",
-          "recommended_value": "0",
-          "compliant": false,
-          "severity": "MEDIUM",
-          "description": "Disable sending ICMP redirects on new interfaces"
-        },
-        {
-          "parameter": "net.ipv4.conf.all.rp_filter",
-          "current_value": "0",
-          "recommended_value": "1",
-          "compliant": false,
-          "severity": "HIGH",
-          "description": "Enable reverse path filtering (anti-spoofing)"
-        },
-        {
-          "parameter": "net.ipv4.conf.default.rp_filter",
-          "current_value": "0",
-          "recommended_value": "1",
-          "compliant": false,
-          "severity": "HIGH",
-          "description": "Enable reverse path filtering on new interfaces"
-        },
-        {
-          "parameter": "net.ipv6.conf.default.accept_source_route",
-          "current_value": "0",
-          "recommended_value": "0",
-          "compliant": true,
-          "severity": "HIGH",
-          "description": "Disable IPv6 source packet routing on new interfaces"
-        },
-        {
-          "parameter": "kernel.kptr_restrict",
-          "current_value": "0",
-          "recommended_value": "2",
-          "compliant": false,
-          "severity": "HIGH",
-          "description": "Hide kernel pointers (prevents kernel exploits)"
-        },
-        {
-          "parameter": "kernel.yama.ptrace_scope",
-          "current_value": "",
-          "recommended_value": "1",
-          "compliant": false,
-          "severity": "MEDIUM",
-          "description": "Restrict ptrace to parent-child only (prevents process injection)"
-        },
-        {
-          "parameter": "net.ipv4.conf.all.accept_source_route",
-          "current_value": "0",
-          "recommended_value": "0",
-          "compliant": true,
-          "severity": "HIGH",
-          "description": "Disable source packet routing (prevents IP spoofing)"
+          "description": "Disable ICMP redirects on new interfaces"
         },
         {
           "parameter": "net.ipv4.conf.all.send_redirects",
@@ -333,44 +329,44 @@
           "description": "Disable sending ICMP redirects"
         },
         {
-          "parameter": "net.ipv4.icmp_ignore_bogus_error_responses",
+          "parameter": "net.ipv4.tcp_syncookies",
           "current_value": "1",
           "recommended_value": "1",
-          "compliant": true,
-          "severity": "LOW",
-          "description": "Ignore bogus ICMP error responses"
-        },
-        {
-          "parameter": "net.ipv6.conf.all.accept_source_route",
-          "current_value": "0",
-          "recommended_value": "0",
           "compliant": true,
           "severity": "HIGH",
-          "description": "Disable IPv6 source packet routing"
+          "description": "Enable SYN flood protection"
         },
         {
-          "parameter": "net.ipv6.conf.all.accept_redirects",
-          "current_value": "1",
-          "recommended_value": "0",
-          "compliant": false,
-          "severity": "MEDIUM",
-          "description": "Disable IPv6 ICMP redirects"
-        },
-        {
-          "parameter": "net.ipv6.conf.default.accept_redirects",
-          "current_value": "1",
-          "recommended_value": "0",
-          "compliant": false,
-          "severity": "MEDIUM",
-          "description": "Disable IPv6 ICMP redirects on new interfaces"
-        },
-        {
-          "parameter": "fs.protected_hardlinks",
-          "current_value": "1",
+          "parameter": "net.ipv4.conf.default.rp_filter",
+          "current_value": "0",
           "recommended_value": "1",
+          "compliant": false,
+          "severity": "HIGH",
+          "description": "Enable reverse path filtering on new interfaces"
+        },
+        {
+          "parameter": "net.ipv4.conf.default.log_martians",
+          "current_value": "0",
+          "recommended_value": "1",
+          "compliant": false,
+          "severity": "LOW",
+          "description": "Log suspicious packets on new interfaces"
+        },
+        {
+          "parameter": "kernel.randomize_va_space",
+          "current_value": "2",
+          "recommended_value": "2",
           "compliant": true,
-          "severity": "MEDIUM",
-          "description": "Protect hardlinks from exploitation"
+          "severity": "CRITICAL",
+          "description": "Enable full ASLR (Address Space Layout Randomization)"
+        },
+        {
+          "parameter": "net.ipv4.conf.default.accept_source_route",
+          "current_value": "1",
+          "recommended_value": "0",
+          "compliant": false,
+          "severity": "HIGH",
+          "description": "Disable source packet routing on new interfaces"
         },
         {
           "parameter": "net.ipv4.conf.all.accept_redirects",
@@ -381,20 +377,52 @@
           "description": "Disable ICMP redirects (prevents MITM attacks)"
         },
         {
-          "parameter": "net.ipv4.conf.default.accept_redirects",
-          "current_value": "1",
-          "recommended_value": "0",
-          "compliant": false,
-          "severity": "MEDIUM",
-          "description": "Disable ICMP redirects on new interfaces"
-        },
-        {
           "parameter": "net.ipv4.conf.all.secure_redirects",
           "current_value": "1",
           "recommended_value": "0",
           "compliant": false,
           "severity": "MEDIUM",
           "description": "Disable secure ICMP redirects"
+        },
+        {
+          "parameter": "net.ipv4.conf.default.secure_redirects",
+          "current_value": "1",
+          "recommended_value": "0",
+          "compliant": false,
+          "severity": "MEDIUM",
+          "description": "Disable secure ICMP redirects on new interfaces"
+        },
+        {
+          "parameter": "net.ipv4.conf.default.send_redirects",
+          "current_value": "1",
+          "recommended_value": "0",
+          "compliant": false,
+          "severity": "MEDIUM",
+          "description": "Disable sending ICMP redirects on new interfaces"
+        },
+        {
+          "parameter": "net.ipv4.conf.all.log_martians",
+          "current_value": "0",
+          "recommended_value": "1",
+          "compliant": false,
+          "severity": "LOW",
+          "description": "Log suspicious packets (martian packets)"
+        },
+        {
+          "parameter": "net.ipv6.conf.all.accept_source_route",
+          "current_value": "0",
+          "recommended_value": "0",
+          "compliant": true,
+          "severity": "HIGH",
+          "description": "Disable IPv6 source packet routing"
+        },
+        {
+          "parameter": "net.ipv6.conf.default.accept_source_route",
+          "current_value": "0",
+          "recommended_value": "0",
+          "compliant": true,
+          "severity": "HIGH",
+          "description": "Disable IPv6 source packet routing on new interfaces"
         },
         {
           "parameter": "net.ipv4.icmp_echo_ignore_broadcasts",
@@ -405,20 +433,92 @@
           "description": "Ignore ICMP broadcast requests (prevents Smurf attacks)"
         },
         {
-          "parameter": "net.ipv4.tcp_syncookies",
+          "parameter": "net.ipv4.icmp_ignore_bogus_error_responses",
           "current_value": "1",
           "recommended_value": "1",
           "compliant": true,
-          "severity": "HIGH",
-          "description": "Enable SYN flood protection"
+          "severity": "LOW",
+          "description": "Ignore bogus ICMP error responses"
         },
         {
-          "parameter": "kernel.randomize_va_space",
-          "current_value": "2",
-          "recommended_value": "2",
+          "parameter": "net.ipv4.conf.all.rp_filter",
+          "current_value": "0",
+          "recommended_value": "1",
+          "compliant": false,
+          "severity": "HIGH",
+          "description": "Enable reverse path filtering (anti-spoofing)"
+        },
+        {
+          "parameter": "net.ipv6.conf.all.accept_redirects",
+          "current_value": "1",
+          "recommended_value": "0",
+          "compliant": false,
+          "severity": "MEDIUM",
+          "description": "Disable IPv6 ICMP redirects"
+        },
+        {
+          "parameter": "kernel.dmesg_restrict",
+          "current_value": "1",
+          "recommended_value": "1",
           "compliant": true,
-          "severity": "CRITICAL",
-          "description": "Enable full ASLR (Address Space Layout Randomization)"
+          "severity": "MEDIUM",
+          "description": "Restrict dmesg access to root only"
+        },
+        {
+          "parameter": "kernel.yama.ptrace_scope",
+          "current_value": "",
+          "recommended_value": "1",
+          "compliant": false,
+          "severity": "MEDIUM",
+          "description": "Restrict ptrace to parent-child only (prevents process injection)"
+        },
+        {
+          "parameter": "fs.protected_hardlinks",
+          "current_value": "1",
+          "recommended_value": "1",
+          "compliant": true,
+          "severity": "MEDIUM",
+          "description": "Protect hardlinks from exploitation"
+        },
+        {
+          "parameter": "fs.protected_symlinks",
+          "current_value": "1",
+          "recommended_value": "1",
+          "compliant": true,
+          "severity": "MEDIUM",
+          "description": "Protect symlinks from exploitation"
+        },
+        {
+          "parameter": "net.ipv4.conf.all.accept_source_route",
+          "current_value": "0",
+          "recommended_value": "0",
+          "compliant": true,
+          "severity": "HIGH",
+          "description": "Disable source packet routing (prevents IP spoofing)"
+        },
+        {
+          "parameter": "net.ipv6.conf.default.accept_redirects",
+          "current_value": "1",
+          "recommended_value": "0",
+          "compliant": false,
+          "severity": "MEDIUM",
+          "description": "Disable IPv6 ICMP redirects on new interfaces"
+        },
+        {
+          "parameter": "kernel.kptr_restrict",
+          "current_value": "0",
+          "recommended_value": "2",
+          "compliant": false,
+          "severity": "HIGH",
+          "description": "Hide kernel pointers (prevents kernel exploits)"
+        },
+        {
+          "parameter": "fs.suid_dumpable",
+          "current_value": "0",
+          "recommended_value": "0",
+          "compliant": true,
+          "severity": "HIGH",
+          "description": "Disable core dumps for SUID programs (prevents info leakage)"
         }
       ],
       "kernel_parameters": [
@@ -458,34 +558,14 @@
           "recommendation": "Review and apply the hardening recommendations below"
         },
         {
-          "severity": "HIGH",
-          "issue": "sysctl net.ipv4.conf.default.accept_source_route is set to '1' (recommended: '0')",
-          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.default.accept_source_route=0 \u0026\u0026 echo 'net.ipv4.conf.default.accept_source_route=0' | sudo tee -a /etc/sysctl.conf"
+          "severity": "MEDIUM",
+          "issue": "sysctl net.ipv4.conf.default.accept_redirects is set to '1' (recommended: '0')",
+          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.default.accept_redirects=0 \u0026\u0026 echo 'net.ipv4.conf.default.accept_redirects=0' | sudo tee -a /etc/sysctl.conf"
         },
         {
           "severity": "MEDIUM",
-          "issue": "sysctl net.ipv4.conf.default.secure_redirects is set to '1' (recommended: '0')",
-          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.default.secure_redirects=0 \u0026\u0026 echo 'net.ipv4.conf.default.secure_redirects=0' | sudo tee -a /etc/sysctl.conf"
-        },
-        {
-          "severity": "LOW",
-          "issue": "sysctl net.ipv4.conf.all.log_martians is set to '0' (recommended: '1')",
-          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.all.log_martians=1 \u0026\u0026 echo 'net.ipv4.conf.all.log_martians=1' | sudo tee -a /etc/sysctl.conf"
-        },
-        {
-          "severity": "LOW",
-          "issue": "sysctl net.ipv4.conf.default.log_martians is set to '0' (recommended: '1')",
-          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.default.log_martians=1 \u0026\u0026 echo 'net.ipv4.conf.default.log_martians=1' | sudo tee -a /etc/sysctl.conf"
-        },
-        {
-          "severity": "MEDIUM",
-          "issue": "sysctl net.ipv4.conf.default.send_redirects is set to '1' (recommended: '0')",
-          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.default.send_redirects=0 \u0026\u0026 echo 'net.ipv4.conf.default.send_redirects=0' | sudo tee -a /etc/sysctl.conf"
-        },
-        {
-          "severity": "HIGH",
-          "issue": "sysctl net.ipv4.conf.all.rp_filter is set to '0' (recommended: '1')",
-          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.all.rp_filter=1 \u0026\u0026 echo 'net.ipv4.conf.all.rp_filter=1' | sudo tee -a /etc/sysctl.conf"
+          "issue": "sysctl net.ipv4.conf.all.send_redirects is set to '1' (recommended: '0')",
+          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.all.send_redirects=0 \u0026\u0026 echo 'net.ipv4.conf.all.send_redirects=0' | sudo tee -a /etc/sysctl.conf"
         },
         {
           "severity": "HIGH",
@@ -493,14 +573,39 @@
           "recommendation": "Run: sudo sysctl -w net.ipv4.conf.default.rp_filter=1 \u0026\u0026 echo 'net.ipv4.conf.default.rp_filter=1' | sudo tee -a /etc/sysctl.conf"
         },
         {
+          "severity": "LOW",
+          "issue": "sysctl net.ipv4.conf.default.log_martians is set to '0' (recommended: '1')",
+          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.default.log_martians=1 \u0026\u0026 echo 'net.ipv4.conf.default.log_martians=1' | sudo tee -a /etc/sysctl.conf"
+        },
+        {
           "severity": "HIGH",
-          "issue": "sysctl kernel.kptr_restrict is set to '0' (recommended: '2')",
-          "recommendation": "Run: sudo sysctl -w kernel.kptr_restrict=2 \u0026\u0026 echo 'kernel.kptr_restrict=2' | sudo tee -a /etc/sysctl.conf"
+          "issue": "sysctl net.ipv4.conf.default.accept_source_route is set to '1' (recommended: '0')",
+          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.default.accept_source_route=0 \u0026\u0026 echo 'net.ipv4.conf.default.accept_source_route=0' | sudo tee -a /etc/sysctl.conf"
         },
         {
           "severity": "MEDIUM",
-          "issue": "sysctl net.ipv4.conf.all.send_redirects is set to '1' (recommended: '0')",
-          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.all.send_redirects=0 \u0026\u0026 echo 'net.ipv4.conf.all.send_redirects=0' | sudo tee -a /etc/sysctl.conf"
+          "issue": "sysctl net.ipv4.conf.all.secure_redirects is set to '1' (recommended: '0')",
+          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.all.secure_redirects=0 \u0026\u0026 echo 'net.ipv4.conf.all.secure_redirects=0' | sudo tee -a /etc/sysctl.conf"
+        },
+        {
+          "severity": "MEDIUM",
+          "issue": "sysctl net.ipv4.conf.default.secure_redirects is set to '1' (recommended: '0')",
+          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.default.secure_redirects=0 \u0026\u0026 echo 'net.ipv4.conf.default.secure_redirects=0' | sudo tee -a /etc/sysctl.conf"
+        },
+        {
+          "severity": "MEDIUM",
+          "issue": "sysctl net.ipv4.conf.default.send_redirects is set to '1' (recommended: '0')",
+          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.default.send_redirects=0 \u0026\u0026 echo 'net.ipv4.conf.default.send_redirects=0' | sudo tee -a /etc/sysctl.conf"
+        },
+        {
+          "severity": "LOW",
+          "issue": "sysctl net.ipv4.conf.all.log_martians is set to '0' (recommended: '1')",
+          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.all.log_martians=1 \u0026\u0026 echo 'net.ipv4.conf.all.log_martians=1' | sudo tee -a /etc/sysctl.conf"
+        },
+        {
+          "severity": "HIGH",
+          "issue": "sysctl net.ipv4.conf.all.rp_filter is set to '0' (recommended: '1')",
+          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.all.rp_filter=1 \u0026\u0026 echo 'net.ipv4.conf.all.rp_filter=1' | sudo tee -a /etc/sysctl.conf"
         },
         {
           "severity": "MEDIUM",
@@ -513,14 +618,9 @@
           "recommendation": "Run: sudo sysctl -w net.ipv6.conf.default.accept_redirects=0 \u0026\u0026 echo 'net.ipv6.conf.default.accept_redirects=0' | sudo tee -a /etc/sysctl.conf"
         },
         {
-          "severity": "MEDIUM",
-          "issue": "sysctl net.ipv4.conf.default.accept_redirects is set to '1' (recommended: '0')",
-          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.default.accept_redirects=0 \u0026\u0026 echo 'net.ipv4.conf.default.accept_redirects=0' | sudo tee -a /etc/sysctl.conf"
-        },
-        {
-          "severity": "MEDIUM",
-          "issue": "sysctl net.ipv4.conf.all.secure_redirects is set to '1' (recommended: '0')",
-          "recommendation": "Run: sudo sysctl -w net.ipv4.conf.all.secure_redirects=0 \u0026\u0026 echo 'net.ipv4.conf.all.secure_redirects=0' | sudo tee -a /etc/sysctl.conf"
+          "severity": "HIGH",
+          "issue": "sysctl kernel.kptr_restrict is set to '0' (recommended: '2')",
+          "recommendation": "Run: sudo sysctl -w kernel.kptr_restrict=2 \u0026\u0026 echo 'kernel.kptr_restrict=2' | sudo tee -a /etc/sysctl.conf"
         },
         {
           "severity": "HIGH",
@@ -717,12 +817,66 @@
       "security_score": 80
     }
   },
+  "findings": [
+    {
+      "id": "port_exposed",
+      "severity": "critical",
+      "container": "dockershield-test-db-1",
+      "port": "5432/tcp",
+      "addresses": [
+        "0.0.0.0",
+        "::"
+      ],
+      "title": "PostgreSQL published on all interfaces",
+      "detail": "Other machines can connect to this port unless a firewall outside Docker blocks it. UFW rules do not apply to published container ports by default.",
+      "fix": "In compose, bind the port to localhost:\n  ports:\n    - \"127.0.0.1:5432:5432\"\nWith docker run:\n  -p 127.0.0.1:5432:5432\nIf only other containers use it, remove the `ports:` entry; containers on the same compose network reach it by service name on port 5432."
+    },
+    {
+      "id": "port_exposed",
+      "severity": "high",
+      "container": "dockershield-test-admin-1",
+      "port": "9000/tcp",
+      "addresses": [
+        "0.0.0.0",
+        "::"
+      ],
+      "title": "Portainer published on all interfaces",
+      "detail": "Other machines can connect to this port unless a firewall outside Docker blocks it. UFW rules do not apply to published container ports by default.",
+      "fix": "In compose, bind the port to localhost:\n  ports:\n    - \"127.0.0.1:9000:9000\"\nWith docker run:\n  -p 127.0.0.1:9000:9000\nIf only other containers use it, remove the `ports:` entry; containers on the same compose network reach it by service name on port 9000."
+    },
+    {
+      "id": "host_network",
+      "severity": "high",
+      "container": "dockershield-test-hostnet-1",
+      "title": "Container uses host networking",
+      "detail": "Every port the container listens on is open on the host directly. Docker does not report these ports, so they are not listed in this scan.",
+      "fix": "List what it listens on:\n  sudo ss -tlnp\nThen remove `network_mode: host` from 'dockershield-test-hostnet-1' and publish only what is needed:\n  ports:\n    - \"127.0.0.1:PORT:PORT\""
+    },
+    {
+      "id": "docker_api_tcp",
+      "severity": "medium",
+      "addresses": [
+        "tcp://0.0.0.0:2376"
+      ],
+      "title": "Docker daemon listens on TCP (TLS client verification is on)",
+      "detail": "Access to tcp://0.0.0.0:2376 depends on the client certificates staying private.",
+      "fix": "Remove the tcp:// entry from \"hosts\" in /etc/docker/daemon.json (or the -H flag of dockerd) and restart Docker:\n  sudo systemctl restart docker\nFor remote access use a Docker context over SSH instead:\n  https://docs.docker.com/engine/security/protect-access/"
+    },
+    {
+      "id": "docker_socket_mounted",
+      "severity": "medium",
+      "container": "dockershield-test-watcher-1",
+      "title": "Docker socket is mounted into the container",
+      "detail": "A process in this container can control the Docker daemon, which is equivalent to root on the host. A read-only mount does not change that.",
+      "fix": "If the container needs the Docker API, put a filtering proxy in between and mount the socket only there, for example:\n  https://github.com/Tecnativa/docker-socket-proxy\nOtherwise remove the volume:\n  - /var/run/docker.sock:/var/run/docker.sock"
+    }
+  ],
   "risk_summary": {
-    "critical": 2,
-    "high": 0,
+    "critical": 1,
+    "high": 2,
     "medium": 2,
-    "low": 1,
+    "low": 2,
     "info": 0
   },
-  "overall_score": 38
+  "overall_score": 45
 }

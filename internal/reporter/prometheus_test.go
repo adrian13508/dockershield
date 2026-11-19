@@ -14,6 +14,7 @@ func TestPrometheusGenerate(t *testing.T) {
 			State: "running",
 			Ports: []models.PortBinding{
 				{HostIP: "0.0.0.0", HostPort: "5432", Protocol: "tcp", ExposureType: models.ExposurePublic, RiskLevel: models.RiskCritical},
+				{HostIP: "::", HostPort: "5432", Protocol: "tcp", ExposureType: models.ExposurePublic, RiskLevel: models.RiskCritical},
 				{HostIP: "127.0.0.1", HostPort: "6379", Protocol: "tcp", ExposureType: models.ExposureLocalhost, RiskLevel: models.RiskLow},
 			},
 		},
@@ -25,7 +26,7 @@ func TestPrometheusGenerate(t *testing.T) {
 			},
 		},
 	}
-	firewall := &models.FirewallInfo{UFWActive: true, DockerBypassingUFW: true}
+	firewall := &models.FirewallInfo{Checked: true, UFWActive: true, DockerBypassingUFW: true}
 	summary := models.RiskSummary{Critical: 1, Medium: 1, Low: 1}
 
 	out := string(NewPrometheusReporter().Generate(containers, firewall, summary, 42))
@@ -47,6 +48,9 @@ func TestPrometheusGenerate(t *testing.T) {
 		}
 	}
 
+	if n := strings.Count(out, `port="5432"`); n != 1 {
+		t.Errorf("IPv4+IPv6 binding of one port must yield one series, got %d:\n%s", n, out)
+	}
 	if strings.Contains(out, `port="6379"`) {
 		t.Errorf("localhost-bound port must not be reported as exposed:\n%s", out)
 	}
@@ -63,5 +67,18 @@ func TestPrometheusGenerateNoFirewall(t *testing.T) {
 	}
 	if !strings.Contains(out, "dockershield_security_score 100\n") {
 		t.Errorf("missing score metric:\n%s", out)
+	}
+}
+
+// When iptables could not be read, 0 would look like "all fine"
+func TestPrometheusFirewallNotChecked(t *testing.T) {
+	out := string(NewPrometheusReporter().Generate(nil, &models.FirewallInfo{Checked: false}, models.RiskSummary{}, 100))
+	if !strings.Contains(out, "dockershield_firewall_checked 0\n") {
+		t.Errorf("missing dockershield_firewall_checked 0:\n%s", out)
+	}
+	for _, absent := range []string{"dockershield_ufw_active", "dockershield_docker_bypassing_ufw"} {
+		if strings.Contains(out, absent) {
+			t.Errorf("%s must be omitted when the firewall was not checked:\n%s", absent, out)
+		}
 	}
 }

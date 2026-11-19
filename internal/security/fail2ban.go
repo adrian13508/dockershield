@@ -103,7 +103,7 @@ func isFail2banRunning() bool {
 // getFail2banJails retrieves the list of jails and their status
 func getFail2banJails() ([]Fail2banJail, error) {
 	// Get list of active jails
-	cmd := exec.Command("sudo", "fail2ban-client", "status")
+	cmd := exec.Command("sudo", "-n", "fail2ban-client", "status")
 	output, err := cmd.Output()
 	if err != nil {
 		// Try without sudo
@@ -146,7 +146,7 @@ func getFail2banJails() ([]Fail2banJail, error) {
 		}
 
 		// Get jail statistics
-		cmd := exec.Command("sudo", "fail2ban-client", "status", jailName)
+		cmd := exec.Command("sudo", "-n", "fail2ban-client", "status", jailName)
 		jailOutput, err := cmd.Output()
 		if err != nil {
 			// Try without sudo

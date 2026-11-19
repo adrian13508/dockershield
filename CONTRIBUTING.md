@@ -24,7 +24,16 @@ golangci-lint run          # config in .golangci.yml
 shellcheck install.sh
 ```
 
-CI runs all of these on every pull request. A pull request is merged only when CI passes.
+CI runs all of these on every pull request, plus the integration test below.
+A pull request is merged only when CI passes.
+
+Integration test (starts and removes the containers in `test/exposed/`; use a Docker
+daemon with nothing else running on the same ports):
+
+```bash
+go build -o dockershield ./cmd/dockershield
+DOCKERSHIELD_BIN=$PWD/dockershield go test -tags integration ./test/
+```
 
 A set of deliberately misconfigured services lives in `test/exposed/compose.yml`:
 

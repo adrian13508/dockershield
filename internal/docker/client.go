@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/docker/docker/client"
 )
@@ -27,6 +28,9 @@ func NewClient() (*Client, error) {
 	ctx := context.Background()
 	_, err = cli.Ping(ctx)
 	if err != nil {
+		if strings.Contains(err.Error(), "permission denied") {
+			return nil, fmt.Errorf("no permission to use the Docker socket (run with sudo or add your user to the docker group): %w", err)
+		}
 		return nil, fmt.Errorf("failed to connect to Docker daemon (is Docker running?): %w", err)
 	}
 

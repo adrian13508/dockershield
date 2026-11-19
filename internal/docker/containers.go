@@ -2,8 +2,13 @@ package docker
 
 import (
 	"fmt"
+	"os"
+	"path"
+	"sort"
 	"strings"
+	"time"
 
+	"github.com/adrian13508/dockershield/internal/analyzer"
 	"github.com/adrian13508/dockershield/pkg/models"
 	"github.com/docker/docker/api/types/container"
 )
@@ -22,29 +27,35 @@ func (c *Client) ListContainers() ([]models.Container, error) {
 
 	// Inspect each container to get detailed information
 	for _, ctr := range containers {
-		// Get full container details
 		inspect, err := c.cli.ContainerInspect(c.ctx, ctr.ID)
 		if err != nil {
-			// Log but don't fail - continue with other containers
-			fmt.Printf("Warning: failed to inspect container %s: %v\n", ctr.ID, err)
+			// Report on stderr so JSON/Prometheus output on stdout stays valid
+			fmt.Fprintf(os.Stderr, "Warning: failed to inspect container %s: %v\n", ctr.ID, err)
 			continue
 		}
 
-		// Extract port bindings
-		ports := extractPortBindings(inspect)
+		name := ctr.ID
+		if len(ctr.Names) > 0 {
+			name = strings.TrimPrefix(ctr.Names[0], "/")
+		}
+		id := ctr.ID
+		if len(id) > 12 {
+			id = id[:12]
+		}
+		created, _ := time.Parse(time.RFC3339Nano, inspect.Created)
 
-		// Build our container model
 		containerInfo := models.Container{
-			ID:          ctr.ID[:12],                           // Short ID (first 12 chars)
-			Name:        strings.TrimPrefix(ctr.Names[0], "/"), // Remove leading slash
-			Image:       ctr.Image,
-			State:       ctr.State,
-			NetworkMode: string(inspect.HostConfig.NetworkMode),
-			Ports:       ports,
-			Networks:    getContainerNetworks(inspect),
-			// CreatedAt is parsed from string in Docker API
-			// For now, we'll use current time as placeholder
-			// TODO: Parse inspect.Created string properly
+			ID:                  id,
+			Name:                name,
+			Image:               ctr.Image,
+			State:               ctr.State,
+			Ports:               extractPortBindings(inspect),
+			Networks:            getContainerNetworks(inspect),
+			CreatedAt:           created,
+			DockerSocketMounted: mountsDockerSocket(inspect),
+		}
+		if inspect.HostConfig != nil {
+			containerInfo.NetworkMode = string(inspect.HostConfig.NetworkMode)
 		}
 
 		result = append(result, containerInfo)
@@ -56,55 +67,72 @@ func (c *Client) ListContainers() ([]models.Container, error) {
 // extractPortBindings converts Docker port bindings to our model
 func extractPortBindings(inspect container.InspectResponse) []models.PortBinding {
 	var bindings []models.PortBinding
+	if inspect.NetworkSettings == nil {
+		return bindings
+	}
 
-	// Docker stores ports in NetworkSettings.Ports
 	// Format: "80/tcp" -> [{"HostIp": "0.0.0.0", "HostPort": "8080"}]
+	// A port that is exposed but not published has an empty list.
 	for port, bindingList := range inspect.NetworkSettings.Ports {
-		if len(bindingList) == 0 {
-			// Port exposed but not bound to host
-			continue
-		}
-
 		for _, binding := range bindingList {
-			// Split port string "80/tcp" -> "80" and "tcp"
-			portParts := strings.Split(string(port), "/")
-			containerPort := portParts[0]
-			protocol := portParts[1]
-
-			pb := models.PortBinding{
+			exposure, scope := analyzer.ClassifyHostIP(binding.HostIP)
+			bindings = append(bindings, models.PortBinding{
 				HostIP:        binding.HostIP,
 				HostPort:      binding.HostPort,
-				ContainerPort: containerPort,
-				Protocol:      protocol,
-				ExposureType:  classifyExposure(binding.HostIP),
-				RiskLevel:     models.RiskInfo, // Will be calculated later
-				RiskReason:    "",
-			}
-
-			bindings = append(bindings, pb)
+				ContainerPort: port.Port(),
+				Protocol:      port.Proto(),
+				ExposureType:  exposure,
+				AddressScope:  scope,
+				RiskLevel:     models.RiskInfo, // set by the analyzer
+			})
 		}
 	}
 
+	// Map iteration order is random; keep output stable
+	sort.Slice(bindings, func(i, j int) bool {
+		a, b := bindings[i], bindings[j]
+		if a.HostPort != b.HostPort {
+			return a.HostPort < b.HostPort
+		}
+		return a.HostIP < b.HostIP
+	})
 	return bindings
 }
 
-// classifyExposure determines how a port is exposed based on IP
-func classifyExposure(hostIP string) models.ExposureType {
-	switch hostIP {
-	case "0.0.0.0", "::":
-		return models.ExposurePublic
-	case "127.0.0.1", "::1":
-		return models.ExposureLocalhost
-	default:
-		return models.ExposureSpecificIP
+// mountsDockerSocket reports whether the Docker socket is mounted into the container
+func mountsDockerSocket(inspect container.InspectResponse) bool {
+	for _, m := range inspect.Mounts {
+		if isDockerSocket(m.Source) {
+			return true
+		}
 	}
+	return false
+}
+
+// isDockerSocket reports whether mounting source gives access to the Docker
+// (or Podman) socket: the socket itself, or a directory that contains it.
+// ponytail: compares paths as written; a socket reached through a symlink
+// or a non-default path is missed. Resolve against the daemon's unix://
+// host if that turns out to matter.
+func isDockerSocket(source string) bool {
+	source = path.Clean(source)
+	switch source {
+	case "/", "/var", "/var/run", "/run":
+		return true
+	}
+	base := path.Base(source)
+	return base == "docker.sock" || base == "podman.sock"
 }
 
 // getContainerNetworks extracts network names from container
 func getContainerNetworks(inspect container.InspectResponse) []string {
 	var networks []string
+	if inspect.NetworkSettings == nil {
+		return networks
+	}
 	for networkName := range inspect.NetworkSettings.Networks {
 		networks = append(networks, networkName)
 	}
+	sort.Strings(networks)
 	return networks
 }

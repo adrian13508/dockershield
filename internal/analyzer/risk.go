@@ -12,27 +12,37 @@ func AnalyzeContainers(containers []models.Container) models.RiskSummary {
 	for i := range containers {
 		container := &containers[i]
 
-		// Analyze each port binding
 		for j := range container.Ports {
-			port := &container.Ports[j]
-			AnalyzePortRisk(port)
-
-			// Count this risk
-			countRisk(&totalRisks, port.RiskLevel)
+			AnalyzePortRisk(&container.Ports[j])
 		}
 
-		// Calculate container's risk summary and highest risk
 		container.RiskCount = calculateContainerRisks(container.Ports)
 		container.HighestRisk = getHighestRisk(container.Ports)
+
+		totalRisks.Critical += container.RiskCount.Critical
+		totalRisks.High += container.RiskCount.High
+		totalRisks.Medium += container.RiskCount.Medium
+		totalRisks.Low += container.RiskCount.Low
+		totalRisks.Info += container.RiskCount.Info
 	}
 
 	return totalRisks
 }
 
-// calculateContainerRisks counts risks for a single container
+// calculateContainerRisks counts risks for a single container.
+// A port published on all interfaces shows up twice on a dual-stack host
+// (0.0.0.0 and ::); that is one mistake, so it is counted once.
 func calculateContainerRisks(ports []models.PortBinding) models.RiskSummary {
 	summary := models.RiskSummary{}
+	seen := map[string]bool{}
 	for _, port := range ports {
+		if port.AddressScope == models.ScopeAllInterfaces {
+			key := port.HostPort + "/" + port.ContainerPort + "/" + port.Protocol
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+		}
 		countRisk(&summary, port.RiskLevel)
 	}
 	return summary
@@ -93,8 +103,8 @@ func CalculateSecurityScore(summary models.RiskSummary) int {
 	score -= summary.Critical * 25 // Critical issues: -25 points each
 	score -= summary.High * 10     // High issues: -10 points each
 	score -= summary.Medium * 5    // Medium issues: -5 points each
-	score -= summary.Low * 2       // Low issues: -2 points each
-	// Info issues don't affect score
+	// Low and info do not affect the score: a port bound to localhost is the
+	// recommended setup and must not cost points.
 
 	// Ensure score doesn't go negative
 	if score < 0 {

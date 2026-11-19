@@ -303,7 +303,6 @@ func runScan(cmd *cobra.Command, args []string) error {
 
 	if len(containers) == 0 && !quietMode {
 		fmt.Println("No containers found.")
-		return nil
 	}
 
 	// Scan networks (always needed for JSON output)
@@ -319,7 +318,6 @@ func runScan(cmd *cobra.Command, args []string) error {
 
 	// Analyze security risks
 	riskSummary := analyzer.AnalyzeContainers(containers)
-	score := analyzer.CalculateSecurityScore(riskSummary)
 
 	// Analyze firewall (iptables/UFW)
 	if !quietMode {
@@ -327,6 +325,15 @@ func runScan(cmd *cobra.Command, args []string) error {
 	}
 	firewallAnalysis := system.AnalyzeIptables()
 	firewallInfo := convertFirewallAnalysis(firewallAnalysis)
+
+	// Findings combine ports, container settings, daemon config and firewall state
+	var daemonListeners []analyzer.DaemonListener
+	for _, l := range system.DockerDaemonTCP() {
+		daemonListeners = append(daemonListeners, analyzer.DaemonListener(l))
+	}
+	findings := analyzer.BuildFindings(containers, firewallInfo, daemonListeners)
+	analyzer.AddToSummary(&riskSummary, findings)
+	score := analyzer.CalculateSecurityScore(riskSummary)
 
 	// Perform system security checks
 	if !quietMode {
@@ -349,11 +356,11 @@ func runScan(cmd *cobra.Command, args []string) error {
 	logStatus := security.AnalyzeLogs()
 
 	// Save state for status command
-	saveState(containers, networks, firewallInfo, sshConfig, fail2banStatus, systemStatus, riskSummary, score, quietMode)
+	saveState(containers, networks, firewallInfo, findings, sshConfig, fail2banStatus, systemStatus, riskSummary, score, quietMode)
 
 	// Handle JSON output
 	if jsonOutput {
-		if err := outputJSON(containers, networks, firewallInfo, sshConfig, fail2banStatus, systemStatus,
+		if err := outputJSON(containers, networks, firewallInfo, findings, sshConfig, fail2banStatus, systemStatus,
 			hardeningStatus, userStatus, rootkitStatus, integrityStatus, logStatus, riskSummary, score); err != nil {
 			return err
 		}
@@ -390,7 +397,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 		runningCount := 0
 		for _, container := range containers {
 			if container.State == "running" {
-				displayContainerCompact(container)
+				displayContainerCompact(container, findings)
 				runningCount++
 			}
 		}
@@ -406,8 +413,8 @@ func runScan(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Show remediation recommendations
-	displayRemediations(containers)
+	// Show findings with fixes
+	displayFindings(findings)
 
 	// Show firewall warnings
 	displayFirewallWarnings(firewallAnalysis)
@@ -465,6 +472,7 @@ func outputJSON(
 	containers []models.Container,
 	networks []models.NetworkInfo,
 	firewallInfo *models.FirewallInfo,
+	findings []models.Finding,
 	sshConfig *security.SSHConfig,
 	fail2banStatus *security.Fail2banStatus,
 	systemStatus *security.SystemSecurityStatus,
@@ -491,7 +499,7 @@ func outputJSON(
 	}
 
 	// Generate JSON
-	jsonData, err := jsonReporter.Generate(containers, networks, firewallInfo, securityChecks, riskSummary, score)
+	jsonData, err := jsonReporter.Generate(containers, networks, firewallInfo, findings, securityChecks, riskSummary, score)
 	if err != nil {
 		return fmt.Errorf("failed to generate JSON: %w", err)
 	}
@@ -617,19 +625,19 @@ func getExposureIcon(exposure models.ExposureType) string {
 }
 
 // displayContainerCompact shows container in compact one-line format
-func displayContainerCompact(c models.Container) {
+func displayContainerCompact(c models.Container, findings []models.Finding) {
 	green := color.New(color.FgGreen).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
 	red := color.New(color.FgRed).SprintFunc()
 	white := color.New(color.FgWhite).SprintFunc()
 
-	// Count issues by severity
-	criticalCount := 0
-	highCount := 0
-	mediumCount := 0
-
-	for _, port := range c.Ports {
-		switch port.RiskLevel {
+	// Issues by severity, from the findings for this container
+	criticalCount, highCount, mediumCount := 0, 0, 0
+	for _, f := range findings {
+		if f.Container != c.Name {
+			continue
+		}
+		switch f.Severity {
 		case models.RiskCritical:
 			criticalCount++
 		case models.RiskHigh:
@@ -790,90 +798,33 @@ func displaySecuritySummary(score int, rating string, summary models.RiskSummary
 	fmt.Println()
 }
 
-// displayRemediations shows fix recommendations for security issues
-func displayRemediations(containers []models.Container) {
-	// Group remediations by container + port to handle IPv4/IPv6 together
-	type portKey struct {
-		container string
-		port      string
-		issue     string
-	}
-	groupedRemediations := make(map[portKey][]analyzer.Remediation)
-
-	// Collect and group all remediations
-	for _, container := range containers {
-		remediations := analyzer.GenerateContainerRemediations(container)
-		for _, r := range remediations {
-			// Extract port number from issue (if it's a port-related issue)
-			// We group by the base issue text (without specific IPv4/IPv6 details)
-			key := portKey{
-				container: container.Name,
-				port:      "", // Will be set if we can extract port
-				issue:     r.Issue,
-			}
-			groupedRemediations[key] = append(groupedRemediations[key], r)
-		}
-	}
-
-	if len(groupedRemediations) == 0 {
+// displayFindings lists findings, most severe first, each with its fix
+func displayFindings(findings []models.Finding) {
+	if len(findings) == 0 {
 		return
 	}
 
-	// Show remediation section
 	cyan := color.New(color.FgCyan, color.Bold).SprintFunc()
-	yellow := color.New(color.FgYellow).SprintFunc()
-	fmt.Printf("\n%s\n", cyan("🔧 RECOMMENDED FIXES"))
+	fmt.Printf("\n%s\n", cyan("🔧 FINDINGS AND FIXES"))
 	fmt.Println("═══════════════════════════════════════════════")
 	fmt.Println()
 
-	// Flatten and display grouped remediations
-	counter := 1
-	for _, rems := range groupedRemediations {
-		// If multiple remediations in group (IPv4 + IPv6), merge them
-		if len(rems) > 1 {
-			// Take the first one as base
-			merged := rems[0]
-			// Modify the issue to indicate both protocols
-			merged.Issue = strings.Replace(merged.Issue, "Port exposed", "Port exposed on IPv4 AND IPv6", 1)
-
-			// Add IPv6 warning to explanation
-			merged.Explanation += "\n\n" + yellow("⚠️ IMPORTANT: This port is exposed on BOTH IPv4 (0.0.0.0) and IPv6 (::).") +
-				"\n   Binding to 127.0.0.1 secures both protocols. IPv6 localhost can be explicitly bound if needed."
-
-			// Update command to fix both
-			if strings.Contains(merged.Command, "127.0.0.1") {
-				merged.Command = strings.Replace(merged.Command,
-					"# Use: -p 127.0.0.1:",
-					"# Use (IPv4 + IPv6): -p 127.0.0.1:", 1)
-				merged.Command += "\n   # For IPv6 localhost: -p [::1]:" + extractPort(merged.Command)
-
-				// Update docker-compose example
-				if strings.Contains(merged.Command, "docker-compose") {
-					merged.Command += "\n   # Or in docker-compose.yml:\n" +
-						"   #   ports:\n" +
-						"   #     - \"127.0.0.1:" + extractPort(merged.Command) + "\"\n" +
-						"   #     - \"[::1]:" + extractPort(merged.Command) + "\"  # If IPv6 needed, add this"
-				}
-			}
-
-			fmt.Printf("%d. %s\n", counter, analyzer.FormatRemediation(merged))
-		} else {
-			// Single remediation (no IPv4/IPv6 pairing)
-			fmt.Printf("%d. %s\n", counter, analyzer.FormatRemediation(rems[0]))
+	for i, f := range findings {
+		subject := ""
+		if f.Container != "" {
+			subject = fmt.Sprintf("Container '%s': ", f.Container)
 		}
-		counter++
+		fmt.Printf("%d. %s %s%s\n", i+1, getRiskIcon(f.Severity), subject, f.Title)
+		if f.Port != "" {
+			fmt.Printf("   Port: %s on %s\n", f.Port, strings.Join(f.Addresses, ", "))
+		}
+		fmt.Printf("   Why: %s\n", f.Detail)
+		fmt.Println("   Fix:")
+		for _, line := range strings.Split(f.Fix, "\n") {
+			fmt.Printf("     %s\n", line)
+		}
+		fmt.Println()
 	}
-}
-
-// extractPort extracts port number from command string
-func extractPort(command string) string {
-	// Simple extraction: look for pattern like "127.0.0.1:XXXX"
-	parts := strings.Split(command, "127.0.0.1:")
-	if len(parts) > 1 {
-		portPart := strings.Fields(parts[1])[0]
-		return strings.Trim(portPart, "\":,")
-	}
-	return "PORT"
 }
 
 // convertFirewallAnalysis converts system firewall analysis to model
@@ -888,41 +839,23 @@ func convertFirewallAnalysis(analysis *system.IptablesAnalysis) *models.Firewall
 		DockerBypassingUFW: analysis.DockerBypassingUFW,
 		DockerChains:       analysis.DockerChains,
 		Warning:            analysis.GetFirewallWarning(),
+
+		Checked:                analysis.ErrorMessage == "",
+		DockerUserFiltered:     analysis.DockerUserFiltered,
+		IPv6Checked:            analysis.IPv6Checked,
+		IPv6DockerUserFiltered: analysis.IPv6DockerUserFiltered,
 	}
 }
 
-// displayFirewallWarnings shows firewall-related security warnings
+// displayFirewallWarnings says so when the firewall could not be checked.
+// Actual firewall problems are reported as findings.
 func displayFirewallWarnings(analysis *system.IptablesAnalysis) {
-	if analysis == nil || analysis.ErrorMessage != "" {
-		// Don't show warnings if we couldn't analyze
-		if analysis != nil && analysis.RequiresSudo {
-			yellow := color.New(color.FgYellow).SprintFunc()
-			fmt.Printf("\n%s\n", yellow("ℹ️  Firewall analysis requires sudo privileges"))
-		}
+	if analysis == nil || analysis.ErrorMessage == "" {
 		return
 	}
-
-	warning := analysis.GetFirewallWarning()
-	if warning == "" {
-		return
-	}
-
-	// Show firewall warning section
-	red := color.New(color.FgRed, color.Bold).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
-
-	fmt.Printf("\n%s\n", red("🔥 FIREWALL WARNING"))
-	fmt.Println("═══════════════════════════════════════════════")
-	fmt.Println()
-	fmt.Println(yellow(warning))
-	fmt.Println()
-
-	// Show recommendation
-	recommendation := analysis.GetRecommendation()
-	if recommendation != "" {
-		fmt.Println("How to fix this:")
-		fmt.Println(recommendation)
-	}
+	fmt.Printf("\n%s\n", yellow("ℹ️  Firewall not checked: "+analysis.ErrorMessage))
+	fmt.Println("   Findings about UFW and DOCKER-USER are missing from this scan.")
 }
 
 // runUpgrade executes the upgrade command
@@ -1387,6 +1320,7 @@ func saveState(
 	containers []models.Container,
 	networks []models.NetworkInfo,
 	firewallInfo *models.FirewallInfo,
+	findings []models.Finding,
 	sshConfig *security.SSHConfig,
 	fail2banStatus *security.Fail2banStatus,
 	systemStatus *security.SystemSecurityStatus,
@@ -1423,6 +1357,7 @@ func saveState(
 		Containers:     containers,
 		Networks:       networks,
 		Firewall:       firewallInfo,
+		Findings:       findings,
 		SecurityChecks: securityChecks,
 		RiskSummary:    riskSummary,
 		OverallScore:   score,

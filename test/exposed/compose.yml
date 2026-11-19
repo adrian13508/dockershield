@@ -7,12 +7,30 @@ services:
     environment:
       POSTGRES_PASSWORD: not-a-real-secret
     ports:
-      - "5432:5432" # all interfaces: should be reported as critical
+      - "5432:5432" # all interfaces -> critical
+
   cache:
     image: redis:7-alpine
     ports:
-      - "127.0.0.1:6379:6379" # localhost only: should be reported as OK
+      - "127.0.0.1:6379:6379" # localhost only -> no finding
+
   web:
     image: nginx:alpine
     ports:
-      - "8080:80" # all interfaces
+      - "8080:80" # web port on all interfaces -> low, no finding
+
+  admin:
+    image: nginx:alpine
+    command: ["sh", "-c", "sed -i 's/listen  *80;/listen 9000;/' /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
+    ports:
+      - "9000:9000" # admin UI port on all interfaces -> high
+
+  hostnet:
+    image: nginx:alpine
+    network_mode: host # -> high; its ports are invisible to the Docker API
+
+  watcher:
+    image: alpine:3
+    command: ["sleep", "infinity"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro # -> medium

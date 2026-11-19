@@ -11,6 +11,16 @@ const (
 	ExposureSpecificIP ExposureType = "specific_ip" // Specific IP address
 )
 
+// AddressScope says what kind of host address a port is bound to
+type AddressScope string
+
+const (
+	ScopeAllInterfaces AddressScope = "all_interfaces" // 0.0.0.0, :: or empty
+	ScopeLocalhost     AddressScope = "localhost"      // 127.0.0.0/8, ::1
+	ScopePrivateOrVPN  AddressScope = "private_or_vpn" // RFC 1918, ULA, link-local, 100.64.0.0/10
+	ScopePublicAddress AddressScope = "public_address" // any other specific address
+)
+
 // RiskLevel represents the severity of a security finding
 type RiskLevel string
 
@@ -29,6 +39,7 @@ type PortBinding struct {
 	ContainerPort string       `json:"container_port"` // Container port number
 	Protocol      string       `json:"protocol"`       // tcp or udp
 	ExposureType  ExposureType `json:"exposure_type"`  // How exposed is this port
+	AddressScope  AddressScope `json:"address_scope"`  // Kind of address the port is bound to
 	RiskLevel     RiskLevel    `json:"risk_level"`     // Calculated risk
 	RiskReason    string       `json:"risk_reason"`    // Why this risk level
 }
@@ -45,6 +56,8 @@ type Container struct {
 	HighestRisk RiskLevel     `json:"highest_risk"`
 	RiskCount   RiskSummary   `json:"risk_count"`
 	CreatedAt   time.Time     `json:"created_at"`
+
+	DockerSocketMounted bool `json:"docker_socket_mounted"` // /var/run/docker.sock is mounted into the container
 }
 
 // RiskSummary counts issues by severity
@@ -73,6 +86,11 @@ type FirewallInfo struct {
 	DockerBypassingUFW bool     `json:"docker_bypassing_ufw"`
 	DockerChains       []string `json:"docker_chains,omitempty"`
 	Warning            string   `json:"warning,omitempty"`
+
+	Checked                bool `json:"checked"`                   // false: iptables could not be read, the fields above are not meaningful
+	DockerUserFiltered     bool `json:"docker_user_filtered"`      // IPv4 DOCKER-USER chain has DROP/REJECT/ufw rules
+	IPv6Checked            bool `json:"ipv6_checked"`              // ip6tables could be read
+	IPv6DockerUserFiltered bool `json:"ipv6_docker_user_filtered"` // IPv6 DOCKER-USER chain has DROP/REJECT/ufw rules
 }
 
 // SecurityChecks contains system-level security analysis results
@@ -87,6 +105,18 @@ type SecurityChecks struct {
 	Logs      interface{} `json:"logs,omitempty"`      // LogAnalysisStatus from internal/security
 }
 
+// Finding is one actionable result with a concrete fix
+type Finding struct {
+	ID        string    `json:"id"` // port_exposed, host_network, docker_socket_mounted, docker_api_tcp, ufw_bypassed, ipv6_unfiltered
+	Severity  RiskLevel `json:"severity"`
+	Container string    `json:"container,omitempty"`
+	Port      string    `json:"port,omitempty"`      // host port and protocol, e.g. "5432/tcp"
+	Addresses []string  `json:"addresses,omitempty"` // host addresses the port is bound to
+	Title     string    `json:"title"`
+	Detail    string    `json:"detail"`
+	Fix       string    `json:"fix"`
+}
+
 // ScanResult is the complete output of a security scan
 type ScanResult struct {
 	Timestamp      time.Time       `json:"timestamp"`
@@ -95,6 +125,7 @@ type ScanResult struct {
 	Networks       []NetworkInfo   `json:"networks"`
 	Firewall       *FirewallInfo   `json:"firewall,omitempty"`
 	SecurityChecks *SecurityChecks `json:"security_checks,omitempty"` // New system security checks
+	Findings       []Finding       `json:"findings"`
 	RiskSummary    RiskSummary     `json:"risk_summary"`
 	OverallScore   int             `json:"overall_score"` // 0-100, lower is worse
 }

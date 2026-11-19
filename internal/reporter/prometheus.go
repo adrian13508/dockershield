@@ -67,18 +67,30 @@ func (r *PrometheusReporter) Generate(
 	}
 
 	header(&b, "dockershield_exposed_port", "Container port published on a public interface (0.0.0.0 or ::). Value is always 1; alert on the labels.")
+	// A port published on IPv4 and IPv6 yields two bindings with the same
+	// labels; a duplicate series makes the textfile collector reject the file.
+	seen := map[string]bool{}
 	for _, c := range containers {
 		for _, p := range c.Ports {
-			if p.ExposureType != models.ExposurePublic {
+			if p.ExposureType != models.ExposurePublic && p.AddressScope != models.ScopePublicAddress {
 				continue
 			}
-			fmt.Fprintf(&b, "dockershield_exposed_port{container=\"%s\",port=\"%s\",protocol=\"%s\",severity=\"%s\"} 1\n",
+			line := fmt.Sprintf("dockershield_exposed_port{container=\"%s\",port=\"%s\",protocol=\"%s\",severity=\"%s\"} 1\n",
 				labelEscaper.Replace(c.Name), labelEscaper.Replace(p.HostPort),
 				labelEscaper.Replace(p.Protocol), labelEscaper.Replace(string(p.RiskLevel)))
+			if !seen[line] {
+				seen[line] = true
+				b.WriteString(line)
+			}
 		}
 	}
 
 	if firewall != nil {
+		header(&b, "dockershield_firewall_checked", "Whether iptables could be read (1) or not (0). When 0, the UFW metrics are omitted.")
+		fmt.Fprintf(&b, "dockershield_firewall_checked %d\n", boolToInt(firewall.Checked))
+	}
+
+	if firewall != nil && firewall.Checked {
 		header(&b, "dockershield_ufw_active", "Whether UFW is active (1) or not (0).")
 		fmt.Fprintf(&b, "dockershield_ufw_active %d\n", boolToInt(firewall.UFWActive))
 

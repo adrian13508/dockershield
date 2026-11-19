@@ -1,14 +1,15 @@
 # Example output
 
-Everything below is unedited output from one real run. Nothing was written by hand.
+Everything below is unedited output from real runs. Nothing was written by hand.
 
-Environment: an isolated Docker daemon (`docker:dind`, Alpine Linux) running the three
+Environment: an isolated Docker daemon (`docker:dind`, Alpine Linux) running the
 services from [test/exposed/compose.yml](test/exposed/compose.yml). The scanner was built
 from this repository and run as root inside that environment.
 
 This is a test container, not a server. It has no SSH daemon, no UFW, and no apt, so the
 host sections report missing files and tools. On a Debian or Ubuntu server those sections
-show real values.
+show real values. The Docker-in-Docker daemon listens on TCP with TLS, which is why the
+scan reports a `docker_api_tcp` finding about the host itself.
 
 ## `dockershield scan`
 
@@ -18,7 +19,7 @@ show real values.
 
 Connecting to Docker... ✓
 📦 Scanning containers...
-Found 3 container(s)
+Found 6 container(s)
 
 🔍 Analyzing security risks...
 🔥 Checking firewall configuration...
@@ -28,61 +29,74 @@ Found 3 container(s)
 ┌────────────────────────────────────────────┐
 │  SECURITY SUMMARY                          │
 ├────────────────────────────────────────────┤
-│  Security Score: 38/100 (POOR)             │
+│  Security Score: 45/100 (POOR)             │
 │                                            │
-│  🔴 Critical Issues: 2                     │
+│  🔴 Critical Issues: 1                     │
+│  ⚠️ High Issues: 2                        │
 │  🟡 Medium Issues: 2                       │
-│  ℹ️ Low Issues: 1                          │
+│  ℹ️ Low Issues: 2                          │
 └────────────────────────────────────────────┘
 
 
 📦 RUNNING CONTAINERS
 ═══════════════════════════════════════════════
-⚠️  WARN dockershield-test-web-1 - MEDIUM×2
-❌ ISSUES dockershield-test-db-1 - CRITICAL×2
+❌ ISSUES dockershield-test-db-1 - CRITICAL×1
 ✅ OK dockershield-test-cache-1
+❌ ISSUES dockershield-test-admin-1 - HIGH×1
+✅ OK dockershield-test-web-1
+⚠️  WARN dockershield-test-watcher-1 - MEDIUM×1
+❌ ISSUES dockershield-test-hostnet-1 - HIGH×1
 
 
-🔧 RECOMMENDED FIXES
+🔧 FINDINGS AND FIXES
 ═══════════════════════════════════════════════
 
-1. ⚠️ Container 'dockershield-test-web-1': HTTP exposed to public internet [MEDIUM]
-   Fix: Bind port to localhost (127.0.0.1) or specific private IP
-   Why: Public exposure (0.0.0.0) makes this service accessible from the internet. Unless you need external access, bind to 127.0.0.1 for local-only access.
+1. [CRITICAL] Container 'dockershield-test-db-1': PostgreSQL published on all interfaces
+   Port: 5432/tcp on 0.0.0.0, ::
+   Why: Other machines can connect to this port unless a firewall outside Docker blocks it. UFW rules do not apply to published container ports by default.
+   Fix:
+     In compose, bind the port to localhost:
+       ports:
+         - "127.0.0.1:5432:5432"
+     With docker run:
+       -p 127.0.0.1:5432:5432
+     If only other containers use it, remove the `ports:` entry; containers on the same compose network reach it by service name on port 5432.
 
-⚠️ IMPORTANT: This port is exposed on BOTH IPv4 (0.0.0.0) and IPv6 (::).
-   Binding to 127.0.0.1 secures both protocols. IPv6 localhost can be explicitly bound if needed.
+2. [HIGH] Container 'dockershield-test-admin-1': Portainer published on all interfaces
+   Port: 9000/tcp on 0.0.0.0, ::
+   Why: Other machines can connect to this port unless a firewall outside Docker blocks it. UFW rules do not apply to published container ports by default.
+   Fix:
+     In compose, bind the port to localhost:
+       ports:
+         - "127.0.0.1:9000:9000"
+     With docker run:
+       -p 127.0.0.1:9000:9000
+     If only other containers use it, remove the `ports:` entry; containers on the same compose network reach it by service name on port 9000.
 
-   Example:
-   # Instead of: -p 8080:80
-   # Use (IPv4 + IPv6): -p 127.0.0.1:8080:80
-   # Or use docker-compose with:
-   #   ports:
-   #     - "127.0.0.1:8080:80"
-      # For IPv6 localhost: -p [::1]:8080:80
-      # Or in docker-compose.yml:
-      #   ports:
-      #     - "127.0.0.1:8080:80"
-      #     - "[::1]:8080:80"  # If IPv6 needed, add this
+3. [HIGH] Container 'dockershield-test-hostnet-1': Container uses host networking
+   Why: Every port the container listens on is open on the host directly. Docker does not report these ports, so they are not listed in this scan.
+   Fix:
+     List what it listens on:
+       sudo ss -tlnp
+     Then remove `network_mode: host` from 'dockershield-test-hostnet-1' and publish only what is needed:
+       ports:
+         - "127.0.0.1:PORT:PORT"
 
-2. 🔴 Container 'dockershield-test-db-1': PostgreSQL exposed to public internet [CRITICAL]
-   Fix: Bind port to localhost (127.0.0.1) or specific private IP
-   Why: Public exposure (0.0.0.0) makes this service accessible from the internet. Unless you need external access, bind to 127.0.0.1 for local-only access.
+4. [MEDIUM] Docker daemon listens on TCP (TLS client verification is on)
+   Why: Access to tcp://0.0.0.0:2376 depends on the client certificates staying private.
+   Fix:
+     Remove the tcp:// entry from "hosts" in /etc/docker/daemon.json (or the -H flag of dockerd) and restart Docker:
+       sudo systemctl restart docker
+     For remote access use a Docker context over SSH instead:
+       https://docs.docker.com/engine/security/protect-access/
 
-⚠️ IMPORTANT: This port is exposed on BOTH IPv4 (0.0.0.0) and IPv6 (::).
-   Binding to 127.0.0.1 secures both protocols. IPv6 localhost can be explicitly bound if needed.
-
-   Example:
-   # Instead of: -p 5432:5432
-   # Use (IPv4 + IPv6): -p 127.0.0.1:5432:5432
-   # Or use docker-compose with:
-   #   ports:
-   #     - "127.0.0.1:5432:5432"
-      # For IPv6 localhost: -p [::1]:5432:5432
-      # Or in docker-compose.yml:
-      #   ports:
-      #     - "127.0.0.1:5432:5432"
-      #     - "[::1]:5432:5432"  # If IPv6 needed, add this
+5. [MEDIUM] Container 'dockershield-test-watcher-1': Docker socket is mounted into the container
+   Why: A process in this container can control the Docker daemon, which is equivalent to root on the host. A read-only mount does not change that.
+   Fix:
+     If the container needs the Docker API, put a filtering proxy in between and mount the socket only there, for example:
+       https://github.com/Tecnativa/docker-socket-proxy
+     Otherwise remove the volume:
+       - /var/run/docker.sock:/var/run/docker.sock
 
 
 🛡️  SYSTEM SECURITY AUDIT
@@ -126,8 +140,8 @@ System Hardening: [CRITICAL]
 
   Top Issues:
     • [CRITICAL] System hardening needs improvement (0 critical, 5 high, 7 medium issues)
-    • [HIGH] sysctl kernel.kptr_restrict is set to '0' (recommended: '2')
-    • [MEDIUM] sysctl net.ipv4.conf.all.secure_redirects is set to '1' (recommended: '0')
+    • [MEDIUM] sysctl net.ipv4.conf.default.accept_redirects is set to '1' (recommended: '0')
+    • [MEDIUM] sysctl net.ipv4.conf.default.secure_redirects is set to '1' (recommended: '0')
 
 User & Sudo Security: [MEDIUM]
   Security Score: 77/100
@@ -157,28 +171,70 @@ Log Analysis: [MEDIUM]
 ✓ Scan complete
 ```
 
+## After applying the fixes
+
+The same scan against [test/exposed/compose.fixed.yml](test/exposed/compose.fixed.yml).
+Host sections omitted here; they are identical to the ones above.
+
+```
+┌────────────────────────────────────────────┐
+│  SECURITY SUMMARY                          │
+├────────────────────────────────────────────┤
+│  Security Score: 95/100 (EXCELLENT)        │
+│                                            │
+│  🟡 Medium Issues: 1                       │
+│  ℹ️ Low Issues: 5                          │
+└────────────────────────────────────────────┘
+
+
+📦 RUNNING CONTAINERS
+═══════════════════════════════════════════════
+✅ OK dockershield-test-db-1
+✅ OK dockershield-test-cache-1
+✅ OK dockershield-test-web-1
+✅ OK dockershield-test-hostnet-1
+✅ OK dockershield-test-admin-1
+✅ OK dockershield-test-watcher-1
+
+
+🔧 FINDINGS AND FIXES
+═══════════════════════════════════════════════
+
+1. [MEDIUM] Docker daemon listens on TCP (TLS client verification is on)
+   Why: Access to tcp://0.0.0.0:2376 depends on the client certificates staying private.
+   Fix:
+     Remove the tcp:// entry from "hosts" in /etc/docker/daemon.json (or the -H flag of dockerd) and restart Docker:
+       sudo systemctl restart docker
+     For remote access use a Docker context over SSH instead:
+       https://docs.docker.com/engine/security/protect-access/
+```
+
 ## `dockershield scan --prometheus`
+
+From the first run.
 
 ```
 # HELP dockershield_security_score Overall security score (0-100, higher is better).
 # TYPE dockershield_security_score gauge
-dockershield_security_score 38
+dockershield_security_score 45
 # HELP dockershield_risks Detected risks by severity across all containers.
 # TYPE dockershield_risks gauge
-dockershield_risks{severity="critical"} 2
-dockershield_risks{severity="high"} 0
+dockershield_risks{severity="critical"} 1
+dockershield_risks{severity="high"} 2
 dockershield_risks{severity="medium"} 2
-dockershield_risks{severity="low"} 1
+dockershield_risks{severity="low"} 2
 dockershield_risks{severity="info"} 0
 # HELP dockershield_containers Number of containers by state.
 # TYPE dockershield_containers gauge
-dockershield_containers{state="running"} 3
+dockershield_containers{state="running"} 6
 # HELP dockershield_exposed_port Container port published on a public interface (0.0.0.0 or ::). Value is always 1; alert on the labels.
 # TYPE dockershield_exposed_port gauge
-dockershield_exposed_port{container="dockershield-test-web-1",port="8080",protocol="tcp",severity="medium"} 1
-dockershield_exposed_port{container="dockershield-test-web-1",port="8080",protocol="tcp",severity="medium"} 1
 dockershield_exposed_port{container="dockershield-test-db-1",port="5432",protocol="tcp",severity="critical"} 1
-dockershield_exposed_port{container="dockershield-test-db-1",port="5432",protocol="tcp",severity="critical"} 1
+dockershield_exposed_port{container="dockershield-test-admin-1",port="9000",protocol="tcp",severity="high"} 1
+dockershield_exposed_port{container="dockershield-test-web-1",port="8080",protocol="tcp",severity="low"} 1
+# HELP dockershield_firewall_checked Whether iptables could be read (1) or not (0). When 0, the UFW metrics are omitted.
+# TYPE dockershield_firewall_checked gauge
+dockershield_firewall_checked 1
 # HELP dockershield_ufw_active Whether UFW is active (1) or not (0).
 # TYPE dockershield_ufw_active gauge
 dockershield_ufw_active 0
@@ -187,16 +243,14 @@ dockershield_ufw_active 0
 dockershield_docker_bypassing_ufw 0
 # HELP dockershield_last_scan_timestamp_seconds Unix timestamp of the last completed scan.
 # TYPE dockershield_last_scan_timestamp_seconds gauge
-dockershield_last_scan_timestamp_seconds 1795077990
+dockershield_last_scan_timestamp_seconds 1795079277
 ```
-
-The repeated `dockershield_exposed_port` lines are a known bug: a port published on both
-IPv4 and IPv6 is emitted twice with identical labels. See "Limitations" in the README.
 
 ## `dockershield scan --json`
 
-See [example_report.json](example_report.json), produced by the same run.
+See [example_report.json](example_report.json), produced by the first run.
 
 ## Exit code
 
-`dockershield scan --fail-on critical` exited with code 2 in this environment.
+`dockershield scan --fail-on critical` exits with code 2 in the first environment.
+`dockershield scan --fail-on high` exits with code 0 in the second.

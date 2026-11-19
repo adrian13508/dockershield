@@ -75,7 +75,7 @@ func TestJSONGeneration(t *testing.T) {
 	}
 
 	// Generate JSON (with empty security checks for this test)
-	jsonData, err := reporter.Generate(containers, networks, firewallInfo, nil, riskSummary, score)
+	jsonData, err := reporter.Generate(containers, networks, firewallInfo, nil, nil, riskSummary, score)
 	if err != nil {
 		t.Fatalf("Failed to generate JSON: %v", err)
 	}

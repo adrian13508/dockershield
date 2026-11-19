@@ -17,18 +17,23 @@ DockerShield is written by one person, with AI coding tools.
 
 - `go vet`, `go test ./...`, `golangci-lint` and `shellcheck install.sh` run in CI on
   every pull request.
-- Unit tests cover the port risk rating, the score, the JSON and Prometheus reporters and
-  the `--fail-on` logic.
-- The scanner is run against a set of deliberately misconfigured containers in
-  `test/exposed/compose.yml`. The example output in the README and in `EXAMPLE_OUTPUT.md`
-  is copied from such a run, not written by hand.
+- Unit tests cover address classification, the port risk rating, findings and the score,
+  parsing of iptables rules and Docker daemon settings, the SSH config parser, the JSON
+  and Prometheus reporters, checksum verification in `upgrade`, and the `--fail-on` logic.
+- An integration test in CI starts the deliberately misconfigured containers in
+  `test/exposed/compose.yml`, runs the built scanner and checks the findings. It then
+  starts `compose.fixed.yml` and checks that the findings are gone.
+- The example output in the README and in `EXAMPLE_OUTPUT.md` is copied from such a run,
+  not written by hand.
 - The install script was run against a real release, and against a release with a
   tampered checksum to confirm that it refuses to install.
 
 ## What is not checked
 
-- The firewall, SSH, fail2ban and other host checks have no automated tests. They shell
-  out to system tools and read system files, and have only been run by hand.
+- The firewall findings are tested against saved rule sets, including the rules that
+  ufw-docker installs, but not against a live host with UFW.
+- The fail2ban, update, user, rootkit, integrity and log checks have no automated tests.
+  They shell out to system tools and read system files, and have only been run by hand.
 - No distribution matrix. TODO(Adrian): list the distributions and Docker versions you
   have actually run it on.
 - No external security audit.

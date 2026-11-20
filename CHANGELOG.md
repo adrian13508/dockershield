@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issue templates, `HOW_THIS_IS_BUILT.md`, test environment in `test/exposed/compose.yml`
 
 ### Added (project)
-- `site/`: static project page for GitHub Pages with a waitlist form for a planned team version
+- `site/`: static project page for GitHub Pages that links to a waitlist form (Google Forms) for a planned team version
 - `metrics.sh` and a daily workflow that append stars, forks, release downloads and 14-day traffic to `metrics.csv` on the `metrics` branch. The tool itself still reports nothing
 
 ### Added (reports)

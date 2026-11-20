@@ -439,7 +439,7 @@ ports the scan reported, and prints both views side by side.
 The command-line tool checks one server at a time and keeps no history. A hosted version
 for people who run several servers is being considered. It is not built. The
 [project page](https://adrian13508.github.io/dockershield/?ref=readme#teams) describes
-the idea and has a waitlist form with two questions.
+the idea and links to a waitlist form (Google Forms) with two questions.
 
 Interest is measured without anything in the tool: [metrics.sh](metrics.sh) reads this
 repository's public numbers and its 14-day traffic from the GitHub API once a day. The

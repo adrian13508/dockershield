@@ -20,11 +20,7 @@
   code { font: 14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--code); padding: 1px 4px; border-radius: 3px; }
   pre code { background: none; padding: 0; font-size: 13px; }
   li { margin: 4px 0; }
-  form { border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; margin-top: 16px; }
-  label { display: block; font-weight: 600; margin: 14px 0 4px; }
-  label:first-child { margin-top: 0; }
-  input, select, button { font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; width: 100%; }
-  button { width: auto; margin-top: 18px; padding: 8px 18px; font-weight: 600; cursor: pointer; background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  .button { display: inline-block; padding: 8px 18px; font-weight: 600; border-radius: 6px; text-decoration: none; background: var(--fg); color: var(--bg); }
   footer { margin-top: 56px; padding-top: 14px; border-top: 1px solid var(--line); }
 </style>
 </head>
@@ -81,47 +77,24 @@
   <li>Reports to hand to a client or an auditor.</li>
 </ul>
 <p>The command-line tool stays free and open source, and it will not send anything anywhere unless you run a command that says so.</p>
-<p>If this would be useful to you, leave an email address. The two questions decide what gets built first, or whether it gets built at all.</p>
+<p>If this would be useful to you, leave an email address in the form. Its two questions decide what gets built first, or whether it gets built at all.</p>
 
-<!-- TODO(Adrian): choose how sign-ups are collected (see TODO-ADRIAN.md), then replace
-     FORM_TODO below with the endpoint and fill in the privacy sentence. The Pages
-     workflow refuses to deploy while FORM_TODO is present. -->
-<form action="FORM_TODO" method="POST">
-  <label for="email">Email address</label>
-  <input id="email" name="email" type="email" required autocomplete="email">
-
-  <label for="servers">How many servers do you run Docker on?</label>
-  <select id="servers" name="servers" required>
-    <option value="" selected disabled>Choose one</option>
-    <option>1</option>
-    <option>2 to 5</option>
-    <option>6 to 20</option>
-    <option>More than 20</option>
-  </select>
-
-  <label for="priority">What matters most to you?</label>
-  <select id="priority" name="priority" required>
-    <option value="" selected disabled>Choose one</option>
-    <option value="history">All servers in one place, with history</option>
-    <option value="alerts">A notification when something new is exposed</option>
-    <option value="outside">Checks from outside without a second machine</option>
-    <option value="reports">Reports for clients or audits</option>
-    <option value="other">Something else</option>
-  </select>
-
-  <input type="hidden" name="ref" id="ref" value="site">
-  <button type="submit">Join the waitlist</button>
-  <p class="muted">FORM_TODO privacy sentence: who receives the address, what it is used for, how to have it deleted.</p>
-</form>
+<!-- TODO(Adrian): create the Google Form (steps in TODO-ADRIAN.md, M2), then replace
+     FORM_TODO in the href with its pre-filled link and write the privacy sentence.
+     The Pages workflow refuses to deploy while FORM_TODO is present. -->
+<p><a class="button" id="signup" href="FORM_TODO">Open the waitlist form</a></p>
+<p class="muted">The form is hosted by Google Forms and opens on docs.google.com. It asks for an email address, the number of servers and what matters most to you. FORM_TODO privacy sentence: who receives the address, what it is used for, how to have it deleted.</p>
 
 <footer class="muted">
-  <p>DockerShield is written by Adrian Kurowski. Contact: <a href="mailto:adrian@kurowski.dev">adrian@kurowski.dev</a>. This page loads no scripts, fonts or trackers from other sites.</p>
+  <p>DockerShield is written by Adrian Kurowski. Contact: <a href="mailto:adrian@kurowski.dev">adrian@kurowski.dev</a>. This page loads no scripts, fonts or trackers from other sites. The waitlist form is on Google Forms.</p>
 </footer>
 
 <script>
-  // Where the visitor came from (?ref=readme, ?ref=cli), sent with the form and nowhere else
+  // Where the visitor came from (?ref=readme, ?ref=cli). The form link carries the
+  // placeholder DS_REF in its pre-filled "source" answer; it is replaced here.
   var ref = new URLSearchParams(location.search).get("ref");
-  if (/^[a-z0-9_-]{1,20}$/.test(ref || "")) document.getElementById("ref").value = ref;
+  var link = document.getElementById("signup");
+  link.href = link.href.replace("DS_REF", /^[a-z0-9_-]{1,20}$/.test(ref || "") ? ref : "site");
 </script>
 </body>
 </html>

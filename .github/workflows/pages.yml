@@ -1,0 +1,39 @@
+name: Pages
+
+# Publishes /site to GitHub Pages. Pages must be enabled once in the
+# repository settings with the source set to "GitHub Actions".
+
+on:
+  push:
+    branches: [main]
+    paths: [site/**, .github/workflows/pages.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refuse to publish a sign-up form that goes nowhere
+        run: |
+          if grep -rn "FORM_TODO" site; then
+            echo "::error::site/index.html still contains FORM_TODO. Set the form endpoint and the privacy sentence first."
+            exit 1
+          fi
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

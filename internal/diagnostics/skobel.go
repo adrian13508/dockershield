@@ -7,9 +7,9 @@ import (
 	"runtime"
 )
 
-// CheckDockerShield performs DockerShield-specific checks
-func CheckDockerShield(version, commit string) *DockerShieldInfo {
-	return &DockerShieldInfo{
+// CheckSkobel performs Skobel-specific checks
+func CheckSkobel(version, commit string) *SkobelInfo {
+	return &SkobelInfo{
 		Version:        checkVersion(version),
 		BinaryLocation: checkBinaryLocation(),
 		BuildInfo:      checkBuildInfo(commit),

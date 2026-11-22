@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/adrian13508/dockershield/pkg/models"
+	"github.com/adrian13508/skobel/pkg/models"
 	"github.com/fatih/color"
 )
 
@@ -69,7 +69,7 @@ func FormatStatusTerminal(result *models.ScanResult) {
 	const boxWidth = 42
 
 	fmt.Println("┌────────────────────────────────────────────┐")
-	fmt.Printf("│  %s  │\n", padTableLine(cyan("DockerShield Status"), boxWidth-2))
+	fmt.Printf("│  %s  │\n", padTableLine(cyan("Skobel Status"), boxWidth-2))
 	fmt.Println("├────────────────────────────────────────────┤")
 	fmt.Printf("│  %s  │\n", padTableLine(fmt.Sprintf("Last Scan: %s", white(ageStr)), boxWidth-2))
 	fmt.Printf("│  %s  │\n", padTableLine(fmt.Sprintf("Containers: %s running", white(fmt.Sprintf("%d", len(result.Containers)))), boxWidth-2))
@@ -116,10 +116,10 @@ func FormatStatusTerminal(result *models.ScanResult) {
 	// Show if stale
 	if age > 24*time.Hour {
 		fmt.Printf("%s\n", yellow("⚠️  Last scan was more than 24 hours ago (stale)."))
-		fmt.Println("Run 'dockershield scan' for fresh data.")
+		fmt.Println("Run 'skobel scan' for fresh data.")
 		fmt.Println()
 	} else {
-		fmt.Println("Run 'dockershield scan' for detailed analysis.")
+		fmt.Println("Run 'skobel scan' for detailed analysis.")
 	}
 }
 

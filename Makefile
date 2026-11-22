@@ -1,8 +1,8 @@
-# Makefile for DockerShield
+# Makefile for Skobel
 
 # Build variables
-BINARY_NAME=dockershield
-CMD_PATH=./cmd/dockershield
+BINARY_NAME=skobel
+CMD_PATH=./cmd/skobel
 BUILD_DIR=./build
 VERSION?=0.1.0-dev
 COMMIT?=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
@@ -64,7 +64,7 @@ dev:
 
 ## help: Show this help message
 help:
-	@echo "DockerShield - Makefile commands:"
+	@echo "Skobel - Makefile commands:"
 	@echo ""
 	@sed -n 's/^##//p' $(MAKEFILE_LIST) | column -t -s ':' | sed -e 's/^/ /'
 

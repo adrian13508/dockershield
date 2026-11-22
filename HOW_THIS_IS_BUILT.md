@@ -1,6 +1,6 @@
 # How this code is written and checked
 
-DockerShield is written by one person, with AI coding tools.
+Skobel is written by one person, with AI coding tools.
 
 ## Use of AI tools
 

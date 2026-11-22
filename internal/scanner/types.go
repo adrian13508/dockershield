@@ -3,7 +3,7 @@ package scanner
 import (
 	"time"
 
-	"github.com/adrian13508/dockershield/pkg/models"
+	"github.com/adrian13508/skobel/pkg/models"
 )
 
 // CategoryResult represents the result of a category-specific scan

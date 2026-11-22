@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/adrian13508/dockershield/internal/probe"
+	"github.com/adrian13508/skobel/internal/probe"
 )
 
 func TestOwnershipConfirmationIsRememberedPerHost(t *testing.T) {

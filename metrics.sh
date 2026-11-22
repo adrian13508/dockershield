@@ -6,14 +6,14 @@
 #
 # Needs the gh CLI, authenticated as someone with push access to the
 # repository: the traffic endpoints refuse everyone else. Reads only this
-# repository's own numbers from the GitHub API. Nothing in the dockershield
+# repository's own numbers from the GitHub API. Nothing in the skobel
 # binary reports anything; this script is the whole measurement.
 #
 # GitHub keeps traffic for 14 days only, so the row is a rolling window.
 # Run it once a day (see .github/workflows/metrics.yml).
 set -eu
 
-REPO="${METRICS_REPO:-adrian13508/dockershield}"
+REPO="${METRICS_REPO:-adrian13508/skobel}"
 FILE="${1:-metrics.csv}"
 HEADER="date,stars,forks,release_downloads,views_14d,unique_visitors_14d,clones_14d,unique_cloners_14d,referrers_14d"
 

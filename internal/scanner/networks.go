@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/adrian13508/dockershield/internal/docker"
+	"github.com/adrian13508/skobel/internal/docker"
 )
 
 // CheckNetworks performs a focused scan on Docker networks

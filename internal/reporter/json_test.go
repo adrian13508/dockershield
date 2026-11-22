@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/adrian13508/dockershield/pkg/models"
+	"github.com/adrian13508/skobel/pkg/models"
 )
 
 // TestJSONGeneration tests that JSON is properly generated
@@ -110,7 +110,7 @@ func TestJSONWriteToFile(t *testing.T) {
 	reporter := NewJSONReporter()
 
 	// WriteToFile rejects absolute paths, so use a relative one
-	tmpFile := "dockershield_test_output.json"
+	tmpFile := "skobel_test_output.json"
 	defer os.Remove(tmpFile) // Clean up after test
 
 	jsonData := []byte(`{"test": "data"}`)

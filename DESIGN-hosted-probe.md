@@ -4,7 +4,7 @@ Status: design only. Nothing in this document is built.
 
 ## Problem
 
-`dockershield probe` needs a second machine. Someone with one VPS and a laptop behind
+`skobel probe` needs a second machine. Someone with one VPS and a laptop behind
 the same provider firewall rules, or with no second machine at all, cannot get an
 outside view. A hosted endpoint can provide it.
 
@@ -17,8 +17,8 @@ else.
 
 Consequences:
 
-- The request must come from the server being checked, so the client is `dockershield`
-  running there (`dockershield probe --hosted`), not a web form.
+- The request must come from the server being checked, so the client is `skobel`
+  running there (`skobel probe --hosted`), not a web form.
 - The target is the TCP peer address of the request. `X-Forwarded-For` and similar
   headers are ignored unless set by the service's own load balancer, and then only the
   entry added by that load balancer is used.
@@ -104,7 +104,7 @@ worst case is about 15 s.
 
 ## Client
 
-`dockershield probe --hosted` would:
+`skobel probe --hosted` would:
 
 1. Run the local scan (or read `--from-report`).
 2. Print what will be sent (the port list and the fact that the request reveals the

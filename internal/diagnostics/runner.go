@@ -16,7 +16,7 @@ func RunAll(version, commit string, verbose bool) *DiagnosticResults {
 	results.Permissions = CheckPermissions()
 	results.Dependencies = CheckDependencies()
 	results.Config = CheckConfig()
-	results.DockerShield = CheckDockerShield(version, commit)
+	results.Skobel = CheckSkobel(version, commit)
 
 	return results
 }

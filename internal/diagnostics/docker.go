@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/adrian13508/dockershield/internal/docker"
+	"github.com/adrian13508/skobel/internal/docker"
 )
 
 // CheckDocker performs Docker-related diagnostic checks

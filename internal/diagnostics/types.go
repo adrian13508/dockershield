@@ -28,7 +28,7 @@ type DiagnosticResults struct {
 	Permissions  *PermissionInfo
 	Dependencies *DependencyInfo
 	Config       *ConfigInfo
-	DockerShield *DockerShieldInfo
+	Skobel       *SkobelInfo
 }
 
 // SystemInfo contains system-level diagnostic information
@@ -75,8 +75,8 @@ type ConfigInfo struct {
 	StateFileExists  CheckResult
 }
 
-// DockerShieldInfo contains DockerShield-specific information
-type DockerShieldInfo struct {
+// SkobelInfo contains Skobel-specific information
+type SkobelInfo struct {
 	Version        CheckResult
 	BinaryLocation CheckResult
 	BuildInfo      CheckResult

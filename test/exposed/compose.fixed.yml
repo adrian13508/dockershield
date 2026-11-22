@@ -1,5 +1,5 @@
 # The same services as compose.yml with the fixes the scanner suggests applied.
-name: dockershield-test
+name: skobel-test
 services:
   db:
     image: postgres:16-alpine

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/adrian13508/dockershield/internal/system"
+	"github.com/adrian13508/skobel/internal/system"
 )
 
 // CheckFirewall performs a focused scan on firewall configuration
@@ -25,7 +25,7 @@ func CheckFirewall(opts CheckOptions) (*CategoryResult, error) {
 				findings = append(findings, Finding{
 					Severity:    "info",
 					Message:     "Firewall analysis requires sudo privileges",
-					Remediation: "Run with sudo: sudo dockershield check firewall",
+					Remediation: "Run with sudo: sudo skobel check firewall",
 				})
 			}
 		} else {

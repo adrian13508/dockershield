@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/adrian13508/dockershield/pkg/models"
+	"github.com/adrian13508/skobel/pkg/models"
 )
 
 func TestGenerateHTML(t *testing.T) {
@@ -42,7 +42,7 @@ func TestGenerateHTML(t *testing.T) {
 		"2. <span class=\"sev high\">HIGH</span>",
 		"PostgreSQL published on all interfaces",
 		"127.0.0.1:5432:5432",
-		"DockerShield 1.2.3",
+		"Skobel 1.2.3",
 		"@media print",
 	} {
 		if !strings.Contains(html, want) {

@@ -6,10 +6,10 @@ Bug reports, false positive reports and pull requests are welcome.
 
 Use the issue templates. For a wrong result (a false alarm or a missed exposure) the most
 useful things are the output of `docker inspect` for the affected container, the
-`ports` section of `dockershield scan --json`, and for firewall findings the output of
+`ports` section of `skobel scan --json`, and for firewall findings the output of
 `sudo iptables-save`. Remove anything you consider private first.
 
-Security vulnerabilities in DockerShield itself: see [SECURITY.md](SECURITY.md).
+Security vulnerabilities in Skobel itself: see [SECURITY.md](SECURITY.md).
 
 ## Development
 
@@ -31,15 +31,15 @@ Integration test (starts and removes the containers in `test/exposed/`; use a Do
 daemon with nothing else running on the same ports):
 
 ```bash
-go build -o dockershield ./cmd/dockershield
-DOCKERSHIELD_BIN=$PWD/dockershield go test -tags integration ./test/
+go build -o skobel ./cmd/skobel
+SKOBEL_BIN=$PWD/skobel go test -tags integration ./test/
 ```
 
 A set of deliberately misconfigured services lives in `test/exposed/compose.yml`:
 
 ```bash
 docker compose -f test/exposed/compose.yml up -d
-./dockershield scan
+./skobel scan
 docker compose -f test/exposed/compose.yml down
 ```
 

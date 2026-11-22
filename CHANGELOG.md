@@ -7,10 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Renamed (breaking)
+The project was called DockerShield up to v0.1.3. It is now Skobel.
+- The command is `skobel`. There is no `dockershield` alias
+- Release archives are named `skobel_<version>_<os>_<arch>.tar.gz`. `dockershield upgrade` in v0.1.x does not find them: install the new binary with `install.sh` or from the release page, then remove the old one
+- Prometheus metrics have the prefix `skobel_` instead of `dockershield_`. Queries and alerts need the new prefix
+- State moved from `~/.dockershield/` to `~/.skobel/`. The old directory is not read and can be deleted; `status` shows nothing until the next scan
+- Go module path is `github.com/adrian13508/skobel`
+- Flags and the JSON report format are unchanged. `compare` reads reports written by v0.1.3
+
 ### Added
 - `scan --fail-on <severity>` exits with code 2 when findings at or above the given severity exist (critical, high, medium, low)
 - `version --check` asks GitHub whether a newer release exists
-- `install.sh` verifies the SHA256 checksum of the downloaded archive against `checksums.txt` and aborts on mismatch; `DOCKERSHIELD_VERSION` pins a release, `INSTALL_DIR` changes the target directory
+- `install.sh` verifies the SHA256 checksum of the downloaded archive against `checksums.txt` and aborts on mismatch; `SKOBEL_VERSION` pins a release, `INSTALL_DIR` changes the target directory
 - CI workflow: gofmt, `go vet`, `go test -race`, golangci-lint, shellcheck on every pull request
 - Issue templates, `HOW_THIS_IS_BUILT.md`, test environment in `test/exposed/compose.yml`
 
@@ -21,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added (reports)
 - `scan --report report.html`: self-contained HTML report (inline CSS, no scripts, no external resources) with score, findings in priority order, fixes, published ports and firewall checks. Prints to PDF
 - `compare before.json after.json`: resolved, new and remaining findings between two JSON reports; `--fail-on-new` for CI
-- Text output of `scan` ends with one line linking to the waitlist for a planned team version. Not printed in JSON, Prometheus or HTML output. `--quiet` or `DOCKERSHIELD_QUIET=1` removes it. No network request is made
+- Text output of `scan` ends with one line linking to the waitlist for a planned team version. Not printed in JSON, Prometheus or HTML output. `--quiet` or `SKOBEL_QUIET=1` removes it. No network request is made
 
 ### Added (probe)
 - `probe <host>`: run from another machine, connects to TCP ports of a host you own and reports open, closed or filtered per address, IPv4 and IPv6 separately
@@ -36,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Findings for host networking (`host_network`), a mounted Docker socket (`docker_socket_mounted`) and a Docker daemon TCP listener (`docker_api_tcp`)
 - IPv6: `ip6tables-save` is read; new finding `ipv6_unfiltered` when the IPv4 `DOCKER-USER` chain filters and the IPv6 one does not
 - `firewall.checked`, `firewall.docker_user_filtered`, `firewall.ipv6_checked`, `firewall.ipv6_docker_user_filtered` in JSON; `docker_socket_mounted` on containers
-- Metric `dockershield_firewall_checked`
+- Metric `skobel_firewall_checked`
 - `upgrade` verifies the SHA256 of the downloaded archive against `checksums.txt` and refuses to install on mismatch
 - SSH check follows `Include` (for example `sshd_config.d`) and recognises `KbdInteractiveAuthentication`
 - Integration tests against deliberately misconfigured containers (`test/exposed/`), run in CI
@@ -49,7 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An empty host IP (as reported by Podman) and all of `127.0.0.0/8` are classified correctly
 - "Docker is bypassing UFW" is no longer reported when the `DOCKER-USER` chain contains DROP, REJECT or ufw rules (for example after installing ufw-docker), and only counts as a finding when a port is actually published
 - Host networking, a mounted Docker socket, a daemon TCP listener and the firewall findings now count towards `risk_summary`, the score and `--fail-on`
-- When iptables cannot be read, the metrics `dockershield_ufw_active` and `dockershield_docker_bypassing_ufw` are omitted instead of reported as 0
+- When iptables cannot be read, the metrics `skobel_ufw_active` and `skobel_docker_bypassing_ufw` are omitted instead of reported as 0
 - `risk_reason` wording: "published on all interfaces" instead of "exposed to public internet"
 - SSH check uses the first value of a repeated keyword, as sshd does, and stops at the first `Match` block
 - With no containers, text-mode `scan` still runs the firewall and host checks
@@ -64,7 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - `check ports` and `check containers` reported every port as `info`
-- Prometheus output contained duplicate `dockershield_exposed_port` series for ports published on IPv4 and IPv6
+- Prometheus output contained duplicate `skobel_exposed_port` series for ports published on IPv4 and IPv6
 - `created_at` in JSON was always the zero time
 - Warnings about containers that could not be inspected were printed to stdout and corrupted JSON and Prometheus output
 - UFW was reported as inactive when `ufw status` could not be run without root; `/etc/ufw/ufw.conf` is now used as a fallback
@@ -190,7 +199,7 @@ DockerShield's first public release provides comprehensive VPS security scanning
 - Future updates will maintain backward compatibility
 - Breaking changes will only occur in major version bumps (v2.0.0, etc.)
 
-[Unreleased]: https://github.com/adrian13508/dockershield/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/adrian13508/skobel/compare/v0.1.3...HEAD
 [0.1.3]: https://github.com/adrian13508/dockershield/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/adrian13508/dockershield/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/adrian13508/dockershield/compare/v0.1.0...v0.1.1

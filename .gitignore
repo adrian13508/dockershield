@@ -18,8 +18,8 @@ vendor/
 build/
 dist/
 
-# DockerShield binary (root directory only)
-/dockershield
+# Skobel binary (root directory only)
+/skobel
 
 # IDE
 .idea/
@@ -33,4 +33,4 @@ dist/
 Thumbs.db
 
 # State files
-.dockershield/
+.skobel/

@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/adrian13508/dockershield/pkg/models"
+	"github.com/adrian13508/skobel/pkg/models"
 )
 
 // PortInfo contains metadata about a known port

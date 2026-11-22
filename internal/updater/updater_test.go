@@ -14,7 +14,7 @@ import (
 	"testing"
 )
 
-const archiveName = "dockershield_9.9.9_linux_x86_64.tar.gz"
+const archiveName = "skobel_9.9.9_linux_x86_64.tar.gz"
 
 func makeArchive(t *testing.T, content string) []byte {
 	t.Helper()

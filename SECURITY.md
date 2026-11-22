@@ -8,12 +8,12 @@ Only the latest release receives fixes.
 
 Do not open a public issue for a vulnerability.
 
-- Preferred: a private [GitHub Security Advisory](https://github.com/adrian13508/dockershield/security/advisories/new)
+- Preferred: a private [GitHub Security Advisory](https://github.com/adrian13508/skobel/security/advisories/new)
 - Or email: adrian@kurowski.dev
 
-Include the version (`dockershield version`), what you observed, and steps to reproduce.
+Include the version (`skobel version`), what you observed, and steps to reproduce.
 
-DockerShield is maintained by one person in spare time. There is no guaranteed response
+Skobel is maintained by one person in spare time. There is no guaranteed response
 time and no bug bounty. The project has not had an external security audit.
 
 ## What the tool does on your system
@@ -27,15 +27,15 @@ time and no bug bounty. The project has not had an external security audit.
   `version --check` contact GitHub. Releases up to and including v0.1.3 also
   contacted GitHub at the end of every text-mode scan.
 - There is no telemetry.
-- It writes `~/.dockershield/state.json` after each scan, and the file given to `-o`.
-  It changes nothing else. `upgrade` replaces the DockerShield binary.
+- It writes `~/.skobel/state.json` after each scan, and the file given to `-o`.
+  It changes nothing else. `upgrade` replaces the Skobel binary.
 
 ## Supply chain
 
 - Releases are built by GitHub Actions with GoReleaser from a tag. Each release includes
   `checksums.txt` (SHA256).
 - `install.sh` and the manual install steps in the README verify the SHA256 checksum.
-- `dockershield upgrade` downloads the release archive and `checksums.txt` and replaces
+- `skobel upgrade` downloads the release archive and `checksums.txt` and replaces
   the binary only if the SHA256 matches. Releases up to and including v0.1.3 did not
   verify anything during `upgrade`; from those versions, update with `install.sh` or by hand.
 - Releases are not signed. The checksums are hosted next to the binaries, so they do not

@@ -125,7 +125,7 @@ func checkIsRoot() CheckResult {
 		Status:  StatusWarning,
 		Value:   "no",
 		Message: "Not running as root (some features require sudo)",
-		Fix:     "Run with sudo for full functionality: sudo dockershield scan",
+		Fix:     "Run with sudo for full functionality: sudo skobel scan",
 	}
 }
 

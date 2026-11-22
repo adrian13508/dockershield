@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/adrian13508/dockershield/pkg/models"
+	"github.com/adrian13508/skobel/pkg/models"
 )
 
 func TestFindingsAtOrAbove(t *testing.T) {
@@ -57,7 +57,7 @@ func TestWaitlistNotice(t *testing.T) {
 	}
 	for _, on := range []string{"0", "false"} {
 		if waitlistNotice(false, on) == "" {
-			t.Errorf("DOCKERSHIELD_QUIET=%s must not hide the notice", on)
+			t.Errorf("SKOBEL_QUIET=%s must not hide the notice", on)
 		}
 	}
 }

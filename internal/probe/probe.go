@@ -20,8 +20,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/adrian13508/dockershield/internal/analyzer"
-	"github.com/adrian13508/dockershield/pkg/models"
+	"github.com/adrian13508/skobel/internal/analyzer"
+	"github.com/adrian13508/skobel/pkg/models"
 )
 
 // Hard limits. probe checks a handful of ports on one host; it is not a

@@ -26,7 +26,7 @@ fi
 # One call per endpoint; a failure of any of them stops the script before
 # anything is written, so the file never gets a half-filled row.
 repo=$(gh api "repos/$REPO" --jq '[.stargazers_count, .forks_count] | @csv')
-# ponytail: first 100 releases only, paginate if the project ever has more
+# First 100 releases only, paginate if the project ever has more
 downloads=$(gh api "repos/$REPO/releases?per_page=100" --jq '[.[].assets[].download_count] | add // 0')
 views=$(gh api "repos/$REPO/traffic/views" --jq '[.count, .uniques] | @csv')
 clones=$(gh api "repos/$REPO/traffic/clones" --jq '[.count, .uniques] | @csv')

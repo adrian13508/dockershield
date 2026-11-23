@@ -1,6 +1,7 @@
 package system
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -40,13 +41,14 @@ func AnalyzeIptables() *IptablesAnalysis {
 func analyze(v4, v6 string, v6ok, ufw bool) *IptablesAnalysis {
 	a := &IptablesAnalysis{UFWActive: ufw, IPv6Checked: v6ok}
 
-	a.DockerChains, a.DockerUserRules = parseRules(v4)
+	chains, rules := parseRules(v4)
+	a.DockerChains, a.DockerUserRules = chains, rules[dockerUserChain]
 	a.HasDocker = len(a.DockerChains) > 0
-	a.DockerUserFiltered = filters(a.DockerUserRules)
+	a.DockerUserFiltered = filters(rules, dockerUserChain, map[string]bool{})
 
 	if v6ok {
 		_, v6Rules := parseRules(v6)
-		a.IPv6DockerUserFiltered = filters(v6Rules)
+		a.IPv6DockerUserFiltered = filters(v6Rules, dockerUserChain, map[string]bool{})
 	}
 
 	// Docker's rules are evaluated before UFW's. Unless the user has put
@@ -56,48 +58,59 @@ func analyze(v4, v6 string, v6ok, ufw bool) *IptablesAnalysis {
 	return a
 }
 
-// readRules runs iptables-save or ip6tables-save, falling back to sudo -n
+// readRules runs iptables-save or ip6tables-save, falling back to sudo -n.
+// The fallback also covers systems where /usr/sbin is only in root's PATH.
 func readRules(command string) (string, bool, error) {
-	output, err := exec.Command(command).CombinedOutput()
-	if err == nil && len(output) > 0 {
+	output, direct := exec.Command(command).CombinedOutput()
+	if direct == nil && len(output) > 0 {
 		return string(output), false, nil
 	}
 
-	output, err = exec.Command("sudo", "-n", command).CombinedOutput()
-	if err != nil {
-		if strings.Contains(err.Error(), "not found") || strings.Contains(string(output), "not found") {
-			return "", false, fmt.Errorf("%s not found (iptables not installed?)", command)
-		}
-		return "", true, fmt.Errorf("insufficient permissions (run with sudo or configure passwordless sudo)")
+	output, err := exec.Command("sudo", "-n", command).CombinedOutput()
+	switch {
+	case err == nil:
+		return string(output), true, nil
+	case errors.Is(err, exec.ErrNotFound) && errors.Is(direct, exec.ErrNotFound),
+		strings.Contains(string(output), "command not found"):
+		return "", false, fmt.Errorf("%s not found (iptables not installed?)", command)
 	}
-	return string(output), true, nil
+	return "", true, fmt.Errorf("insufficient permissions (run with sudo or configure passwordless sudo)")
 }
 
-// parseRules extracts Docker chain names and DOCKER-USER rules from
+const dockerUserChain = "DOCKER-USER"
+
+// parseRules extracts Docker chain names and the rules of every chain from
 // iptables-save output
-func parseRules(rules string) (chains []string, dockerUserRules []string) {
+func parseRules(rules string) (chains []string, byChain map[string][]string) {
+	byChain = map[string][]string{}
 	seen := map[string]bool{}
 	for _, line := range strings.Split(rules, "\n") {
 		line = strings.TrimSpace(line)
+		fields := strings.Fields(line)
 		switch {
 		case strings.HasPrefix(line, ":DOCKER"):
 			// Format: ":DOCKER-USER - [0:0]"
-			if name := strings.TrimPrefix(strings.Fields(line)[0], ":"); !seen[name] {
+			if name := strings.TrimPrefix(fields[0], ":"); !seen[name] {
 				seen[name] = true
 				chains = append(chains, name)
 			}
-		case strings.HasPrefix(line, "-A DOCKER-USER"):
-			dockerUserRules = append(dockerUserRules, line)
+		case len(fields) >= 2 && fields[0] == "-A":
+			byChain[fields[1]] = append(byChain[fields[1]], line)
 		}
 	}
 	sort.Strings(chains)
-	return chains, dockerUserRules
+	return chains, byChain
 }
 
-// filters reports whether any DOCKER-USER rule drops, rejects or hands
-// traffic to a ufw chain. It does not evaluate what the rules match.
-func filters(dockerUserRules []string) bool {
-	for _, rule := range dockerUserRules {
+// filters reports whether a chain drops, rejects or hands traffic to a ufw
+// chain, directly or in a chain it jumps to. It does not evaluate what the
+// rules match.
+func filters(byChain map[string][]string, chain string, visited map[string]bool) bool {
+	if visited[chain] {
+		return false
+	}
+	visited[chain] = true
+	for _, rule := range byChain[chain] {
 		fields := strings.Fields(rule)
 		for i, f := range fields[:len(fields)-1] {
 			if f != "-j" && f != "-g" {
@@ -105,6 +118,9 @@ func filters(dockerUserRules []string) bool {
 			}
 			target := fields[i+1]
 			if target == "DROP" || target == "REJECT" || strings.HasPrefix(target, "ufw-") {
+				return true
+			}
+			if filters(byChain, target, visited) {
 				return true
 			}
 		}

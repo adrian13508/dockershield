@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net"
 	"net/netip"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -166,16 +165,16 @@ func TestConcurrencyLimit(t *testing.T) {
 	}
 }
 
+// Zero and oversized options must be clamped: a zero concurrency would
+// otherwise block forever on the connection slots.
 func TestRunClampsOptions(t *testing.T) {
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		// Zero and oversized values must not hang or panic
-		Run(context.Background(), loopback, nil, Options{})
-		Run(context.Background(), loopback, nil, Options{Concurrency: 10000, Timeout: time.Hour})
-	}()
-	wg.Wait()
+	port := serve(t, func(net.Conn) {})
+	for _, opts := range []Options{{}, {Concurrency: 10000, Timeout: time.Hour}} {
+		got := Run(context.Background(), loopback, []Target{{Port: port}}, opts)
+		if len(got) != 1 || got[0].State != StateOpen {
+			t.Errorf("Run with %+v = %+v, want one open result", opts, got)
+		}
+	}
 }
 
 func TestTargetsFromReport(t *testing.T) {

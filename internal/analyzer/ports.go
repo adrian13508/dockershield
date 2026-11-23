@@ -17,10 +17,11 @@ type PortInfo struct {
 	Description string
 }
 
-// Well-known dangerous ports database
-// These are ports that should NEVER be exposed to 0.0.0.0
+// Port table: the rating a port gets when it is published on all interfaces
+// or on a public address. The group comments name the kind of service; the
+// rating of each port is in its row.
 var dangerousPorts = map[int]PortInfo{
-	// CRITICAL: Database ports
+	// Databases
 	3306:  {3306, "MySQL", "database", models.RiskCritical, "MySQL database"},
 	5432:  {5432, "PostgreSQL", "database", models.RiskCritical, "PostgreSQL database"},
 	6379:  {6379, "Redis", "database", models.RiskCritical, "Redis cache/database"},
@@ -34,7 +35,7 @@ var dangerousPorts = map[int]PortInfo{
 	7000:  {7000, "Cassandra", "database", models.RiskCritical, "Cassandra"},
 	7001:  {7001, "Cassandra", "database", models.RiskCritical, "Cassandra SSL"},
 
-	// HIGH: Admin interfaces and management tools
+	// Admin interfaces and management tools
 	8080:  {8080, "HTTP Alt", "admin", models.RiskHigh, "Alternative HTTP (often admin panels)"},
 	8443:  {8443, "HTTPS Alt", "admin", models.RiskHigh, "Alternative HTTPS"},
 	9090:  {9090, "Prometheus", "admin", models.RiskHigh, "Prometheus monitoring"},
@@ -46,7 +47,7 @@ var dangerousPorts = map[int]PortInfo{
 	6443:  {6443, "Kubernetes", "admin", models.RiskHigh, "Kubernetes API server"},
 	10250: {10250, "Kubelet", "admin", models.RiskHigh, "Kubernetes Kubelet API"},
 
-	// MEDIUM: Standard web services
+	// Standard web services
 	// 80/443 are normally meant to be public (reverse proxy), so they rate low
 	80:   {80, "HTTP", "web", models.RiskLow, "HTTP web server"},
 	443:  {443, "HTTPS", "web", models.RiskLow, "HTTPS web server"},
@@ -54,19 +55,19 @@ var dangerousPorts = map[int]PortInfo{
 	3001: {3001, "Node.js", "web", models.RiskMedium, "Node.js app (common dev port)"},
 	5000: {5000, "Flask", "web", models.RiskMedium, "Flask/Python app"},
 
-	// HIGH: Remote access
+	// Remote access
 	22:   {22, "SSH", "remote", models.RiskHigh, "SSH server"},
 	23:   {23, "Telnet", "remote", models.RiskCritical, "Telnet (unencrypted)"},
 	3389: {3389, "RDP", "remote", models.RiskHigh, "Windows Remote Desktop"},
 	5900: {5900, "VNC", "remote", models.RiskHigh, "VNC remote desktop"},
 
-	// MEDIUM: Message queues
+	// Message queues
 	5672:  {5672, "RabbitMQ", "queue", models.RiskMedium, "RabbitMQ"},
 	15672: {15672, "RabbitMQ", "queue", models.RiskHigh, "RabbitMQ management"},
 	9092:  {9092, "Kafka", "queue", models.RiskMedium, "Apache Kafka"},
 	4222:  {4222, "NATS", "queue", models.RiskMedium, "NATS messaging"},
 
-	// MEDIUM: Other services
+	// Other services
 	11211: {11211, "Memcached", "cache", models.RiskHigh, "Memcached"},
 	25:    {25, "SMTP", "mail", models.RiskMedium, "SMTP mail server"},
 	53:    {53, "DNS", "dns", models.RiskMedium, "DNS server"},
@@ -128,15 +129,6 @@ func AnalyzePortRisk(binding *models.PortBinding) {
 func GetPortInfo(portNum int) (PortInfo, bool) {
 	info, exists := dangerousPorts[portNum]
 	return info, exists
-}
-
-// IsHighRiskPort returns true if the port is considered high risk
-func IsHighRiskPort(portNum int) bool {
-	info, exists := dangerousPorts[portNum]
-	if !exists {
-		return false
-	}
-	return info.BaseRisk == models.RiskCritical || info.BaseRisk == models.RiskHigh
 }
 
 // KnownPorts returns the port numbers in the table, sorted

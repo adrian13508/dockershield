@@ -13,7 +13,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 )
 
-// ListContainers returns all running containers with their security info
+// ListContainers returns all containers, running or not, with their security info
 func (c *Client) ListContainers() ([]models.Container, error) {
 	// List all containers (running and stopped)
 	containers, err := c.cli.ContainerList(c.ctx, container.ListOptions{
@@ -110,8 +110,9 @@ func mountsDockerSocket(inspect container.InspectResponse) bool {
 }
 
 // isDockerSocket reports whether mounting source gives access to the Docker
-// (or Podman) socket: the socket itself, or a directory that contains it.
-// ponytail: compares paths as written; a socket reached through a symlink
+// (or Podman) socket: the socket itself, or one of /, /var, /var/run and
+// /run, which contain the default socket.
+// Compares paths as written; a socket reached through a symlink
 // or a non-default path is missed. Resolve against the daemon's unix://
 // host if that turns out to matter.
 func isDockerSocket(source string) bool {

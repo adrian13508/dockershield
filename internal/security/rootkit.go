@@ -27,7 +27,6 @@ type RkhunterInfo struct {
 	Version         string    `json:"version,omitempty"`
 	LastUpdate      time.Time `json:"last_update,omitempty"`
 	LastScan        time.Time `json:"last_scan,omitempty"`
-	DatabaseVersion string    `json:"database_version,omitempty"`
 	WarningsFound   int       `json:"warnings_found"`
 	SuspiciousFiles []string  `json:"suspicious_files,omitempty"`
 	Status          string    `json:"status"`
@@ -114,9 +113,8 @@ func checkRkhunter() RkhunterInfo {
 		}
 	}
 
-	// DatabaseVersion is intentionally left empty: the only way to get it is
-	// `rkhunter --versioncheck`, which makes a network request. The scanner
-	// does not touch the network.
+	// The signature database version is not reported: the only way to get it
+	// is `rkhunter --versioncheck`, which makes a network request.
 
 	// Try to get last scan results from log
 	info.LastScan, info.WarningsFound, info.SuspiciousFiles = parseRkhunterLog()

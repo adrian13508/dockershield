@@ -94,7 +94,7 @@ Checks for:
 Example:
   skobel scan
   skobel scan --json
-  skobel scan --output report.json
+  skobel scan --json --output report.json
   skobel scan --prometheus > skobel.prom
   skobel scan --fail-on critical
   skobel scan --report report.html`,
@@ -123,8 +123,8 @@ var upgradeCmd = &cobra.Command{
 
 This command will:
   - Check for the latest release on GitHub
-  - Download and replace the current binary
-  - Verify the update was successful
+  - Download the archive and verify its SHA256 against the release's checksums.txt
+  - Replace the current binary
 
 Example:
   skobel upgrade`,
@@ -256,9 +256,9 @@ func init() {
 	// Add flags to scan command
 	scanCmd.Flags().BoolVar(&jsonOutput, "json", false, "Output results in JSON format")
 	scanCmd.Flags().BoolVar(&promOutput, "prometheus", false, "Output metrics in Prometheus textfile format (for node_exporter textfile collector)")
-	scanCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write output to file")
+	scanCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write the JSON or Prometheus output to this file (needs --json or --prometheus)")
 	scanCmd.Flags().BoolVarP(&verboseMode, "verbose", "v", false, "Enable verbose logging")
-	scanCmd.Flags().StringVar(&failOn, "fail-on", "", "Exit with code 2 when findings at or above this severity exist (critical, high, medium, low)")
+	scanCmd.Flags().StringVar(&failOn, "fail-on", "", "Exit with code 2 when findings at or above this severity exist (critical, high, medium, low). low also counts ports bound to localhost")
 	scanCmd.Flags().StringVar(&reportFile, "report", "", "Also write a self-contained HTML report to this file")
 	scanCmd.Flags().BoolVarP(&quietNotice, "quiet", "q", false, "Do not print the notice about the planned team version")
 	scanCmd.MarkFlagsMutuallyExclusive("json", "prometheus")
@@ -287,6 +287,9 @@ func runScan(cmd *cobra.Command, args []string) error {
 	case "", "critical", "high", "medium", "low":
 	default:
 		return fmt.Errorf("invalid --fail-on value %q (valid: critical, high, medium, low)", failOn)
+	}
+	if outputFile != "" && !jsonOutput && !promOutput {
+		return fmt.Errorf("--output needs --json or --prometheus; for an HTML report use --report")
 	}
 
 	// In machine-readable modes, suppress progress messages
@@ -329,8 +332,8 @@ func runScan(cmd *cobra.Command, args []string) error {
 
 	// Scan networks (always needed for JSON output)
 	networks, err := dockerClient.ListNetworks()
-	if err != nil && !quietMode {
-		fmt.Printf("Warning: failed to list networks: %v\n", err)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to list networks: %v\n", err)
 	}
 
 	if !quietMode {
@@ -792,7 +795,6 @@ func padTableLine(content string, width int) string {
 		// Emoji ranges:
 		// 0x1F300-0x1F9FF: Emoticons, symbols, pictographs
 		// 0x2600-0x26FF: Miscellaneous symbols (includes ⚠️)
-		// 0xFE0F: Variation selector (makes preceding char emoji-style)
 		if (r >= 0x1F300 && r <= 0x1F9FF) || (r >= 0x2600 && r <= 0x26FF) {
 			emojiCount++
 		}
@@ -969,14 +971,14 @@ func runUpgrade(cmd *cobra.Command, args []string) error {
 
 	// Perform update
 	fmt.Print("Downloading and installing update... ")
-	err = updater.DoSelfUpdate(currentVer)
+	installed, err := updater.DoSelfUpdate(currentVer)
 	if err != nil {
 		fmt.Println("✗")
 		return fmt.Errorf("failed to update: %w", err)
 	}
 	fmt.Println("✓")
 
-	fmt.Printf("\n%s\n", green("✓ Successfully upgraded to "+updateInfo.LatestVersion))
+	fmt.Printf("\n%s\n", green("✓ Successfully upgraded to "+installed))
 	fmt.Println("\nPlease restart skobel to use the new version.")
 
 	return nil
@@ -1465,7 +1467,8 @@ func runStatus(cmd *cobra.Command, args []string) error {
 
 	// If stale and fresh flag is set, run new scan
 	if age > statusMaxAge && statusFresh {
-		fmt.Printf("⚠️  Last scan was %s ago (stale). Running new scan...\n\n", formatDuration(age))
+		fmt.Fprintln(os.Stderr, "The last scan is older than --max-age. Running a new scan...")
+		jsonOutput = statusJSON
 		return runScan(cmd, args)
 	}
 
@@ -1484,32 +1487,6 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// formatDuration formats a duration into a human-readable string
-func formatDuration(d time.Duration) string {
-	if d < time.Minute {
-		return "just now"
-	}
-	if d < time.Hour {
-		minutes := int(d.Minutes())
-		if minutes == 1 {
-			return "1 minute"
-		}
-		return fmt.Sprintf("%d minutes", minutes)
-	}
-	if d < 24*time.Hour {
-		hours := int(d.Hours())
-		if hours == 1 {
-			return "1 hour"
-		}
-		return fmt.Sprintf("%d hours", hours)
-	}
-	days := int(d.Hours() / 24)
-	if days == 1 {
-		return "1 day"
-	}
-	return fmt.Sprintf("%d days", days)
-}
-
 // runCheck executes a category-specific check
 func runCheck(cmd *cobra.Command, args []string) error {
 	category := args[0]
@@ -1524,6 +1501,10 @@ func runCheck(cmd *cobra.Command, args []string) error {
 
 	// If "all" category, delegate to scan command
 	if category == "all" {
+		if checkContainer != "" || checkSeverity != "all" {
+			return fmt.Errorf("check all runs the full scan and does not support --container or --severity")
+		}
+		jsonOutput = checkJSON
 		return runScan(cmd, []string{})
 	}
 

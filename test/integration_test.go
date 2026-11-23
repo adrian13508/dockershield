@@ -169,7 +169,10 @@ func TestExposedServices(t *testing.T) {
 
 	// The waitlist line belongs to text output only, and --quiet removes it
 	for args, want := range map[string]bool{"scan": true, "scan --quiet": false, "scan --json": false, "scan --prometheus": false} {
-		out, _ := exec.Command(bin(t), strings.Fields(args)...).Output()
+		out, err := exec.Command(bin(t), strings.Fields(args)...).Output()
+		if err != nil {
+			t.Fatalf("%q failed: %v", args, err)
+		}
 		if got := strings.Contains(string(out), "Waitlist:"); got != want {
 			t.Errorf("%q: waitlist line present = %v, want %v", args, got, want)
 		}

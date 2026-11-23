@@ -29,21 +29,23 @@ func AnalyzeContainers(containers []models.Container) models.RiskSummary {
 	return totalRisks
 }
 
-// calculateContainerRisks counts risks for a single container.
-// A port published on all interfaces shows up twice on a dual-stack host
-// (0.0.0.0 and ::); that is one mistake, so it is counted once.
+// bindingKey identifies one published port of a container. Bindings of the
+// same port on several addresses (0.0.0.0 and :: on a dual-stack host, or two
+// specific addresses) are one mistake: they share a key as long as they are
+// rated the same, so the summary counts them once and they become one finding.
+func bindingKey(p models.PortBinding) string {
+	return p.HostPort + "/" + p.ContainerPort + "/" + p.Protocol + "/" + string(p.RiskLevel)
+}
+
+// calculateContainerRisks counts risks for a single container
 func calculateContainerRisks(ports []models.PortBinding) models.RiskSummary {
 	summary := models.RiskSummary{}
 	seen := map[string]bool{}
 	for _, port := range ports {
-		if port.AddressScope == models.ScopeAllInterfaces {
-			key := port.HostPort + "/" + port.ContainerPort + "/" + port.Protocol
-			if seen[key] {
-				continue
-			}
+		if key := bindingKey(port); !seen[key] {
 			seen[key] = true
+			countRisk(&summary, port.RiskLevel)
 		}
-		countRisk(&summary, port.RiskLevel)
 	}
 	return summary
 }
@@ -67,14 +69,7 @@ func getHighestRisk(ports []models.PortBinding) models.RiskLevel {
 
 // isHigherRisk compares two risk levels
 func isHigherRisk(a, b models.RiskLevel) bool {
-	riskOrder := map[models.RiskLevel]int{
-		models.RiskInfo:     0,
-		models.RiskLow:      1,
-		models.RiskMedium:   2,
-		models.RiskHigh:     3,
-		models.RiskCritical: 4,
-	}
-	return riskOrder[a] > riskOrder[b]
+	return severityRank[a] > severityRank[b]
 }
 
 // countRisk increments the appropriate counter in the summary

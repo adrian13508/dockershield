@@ -16,12 +16,13 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - run: test -z "$(gofmt -l cmd internal pkg)"
-      - run: go vet ./...
+      - run: test -z "$(gofmt -l cmd internal pkg test)"
+      - run: go vet -tags integration ./...
       - run: go test -race -cover ./...
       - uses: golangci/golangci-lint-action@v8
         with:
           version: v2.1.6
+          args: --build-tags integration
       - run: shellcheck install.sh metrics.sh
 
   integration:

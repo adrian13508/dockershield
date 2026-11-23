@@ -92,7 +92,7 @@
 </table>
 <p class="note">Rules are detected, not evaluated: "yes" means the chain contains a DROP, REJECT or ufw rule, not that it covers every published port.</p>
 {{else}}
-<p>The firewall could not be checked: {{.Warning}} Findings about UFW and <code>DOCKER-USER</code> are missing from this report.</p>
+<p>The firewall could not be checked. {{.Warning}}. Findings about UFW and <code>DOCKER-USER</code> are missing from this report.</p>
 {{end}}
 {{else}}
 <p>The firewall was not checked.</p>

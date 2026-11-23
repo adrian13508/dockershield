@@ -115,8 +115,7 @@ func checkConfigFileValid(configDir string) CheckResult {
 		}
 	}
 
-	// TODO: Parse YAML to validate structure
-	// For now, just return pass if readable
+	// Only readability is checked. The YAML is not parsed.
 
 	return CheckResult{
 		Status:  StatusPass,

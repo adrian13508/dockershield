@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Renamed (breaking)
 The project was called DockerShield up to v0.1.3. It is now Skobel.
 - The command is `skobel`. There is no `dockershield` alias
-- Release archives are named `skobel_<version>_<os>_<arch>.tar.gz`. `dockershield upgrade` in v0.1.x does not find them: install the new binary with `install.sh` or from the release page, then remove the old one
+- Release archives are named `skobel_<version>_<os>_<arch>.tar.gz`, with Go's architecture names: `amd64`, `arm64`, `arm` (was `x86_64`, `armv7`). `dockershield upgrade` in v0.1.x does not find them: install the new binary with `install.sh` or from the release page, then remove the old one
 - Prometheus metrics have the prefix `skobel_` instead of `dockershield_`. Queries and alerts need the new prefix
 - State moved from `~/.dockershield/` to `~/.skobel/`. The old directory is not read and can be deleted; `status` shows nothing until the next scan
 - Go module path is `github.com/adrian13508/skobel`
@@ -71,6 +71,21 @@ The project was called DockerShield up to v0.1.3. It is now Skobel.
 - `install.sh` uses `mktemp -d` instead of a predictable directory in `/tmp`
 
 ### Fixed
+- `upgrade` and `version --check` found no release on amd64 and 32-bit ARM, because the archive names (`x86_64`, `armv7`) did not match what the updater looks for. Archives are now named `amd64` and `arm`
+- A Docker daemon with `tlsverify` in `daemon.json` and its TCP listener on the command line (or the reverse) was reported as listening without TLS verification
+- A daemon host given without a scheme (`-H 0.0.0.0:2375`) was not recognised as a TCP listener
+- A port published on two specific addresses was one finding but counted twice in `risk_summary` and the score
+- `check all --json` and `status --json --fresh` printed the text report instead of JSON
+- `scan --output file` without `--json` or `--prometheus` wrote nothing and said nothing. It is now an error
+- `--output` rejected absolute paths, for example the node_exporter textfile directory. Any path is accepted and the file is written atomically
+- `DOCKER-USER` rules that jump to a user chain which drops traffic were not counted as filtering; rules of chains named like `DOCKER-USER-EXTRA` were read as `DOCKER-USER` rules
+- Without `sudo` installed, the firewall check said iptables was not installed
+- SSH check: `KbdInteractiveAuthentication yes` together with `PasswordAuthentication no` is now reported
+- `compare` with one report from v0.1.3 listed the firewall and daemon findings of the newer report as new. Both reports are now rated from their container lists
+- `probe`: a host name resolving to many addresses multiplied the number of connections (now at most 8 addresses); the ownership confirmation was stored even when the name did not resolve; with `--from-report`, a port bound to IPv4 only was called "published but refused" on the IPv6 address; HTTP banners were not cleaned of non-printable bytes in JSON output
+- `status` counted stopped containers as running
+- `check ports` counted a port published on IPv4 and IPv6 twice and suggested `/tcp` for UDP ports
+- A failure to list Docker networks was not reported in JSON mode (now a warning on stderr)
 - `check ports` and `check containers` reported every port as `info`
 - Prometheus output contained duplicate `skobel_exposed_port` series for ports published on IPv4 and IPv6
 - `created_at` in JSON was always the zero time

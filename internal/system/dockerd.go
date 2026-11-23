@@ -8,28 +8,22 @@ import (
 	"strings"
 )
 
-// TCPListener is one tcp:// address a Docker daemon listens on
+// TCPListener is one TCP address a Docker daemon listens on
 type TCPListener struct {
-	Host      string
-	TLSVerify bool // tlsverify is set in the same source as the listener
+	Host      string // always with the tcp:// prefix
+	TLSVerify bool
 }
 
-// DockerDaemonTCP looks for tcp:// listeners in /etc/docker/daemon.json and
-// on the command line of every running dockerd. Unreadable sources are
-// skipped. TLS verification is tracked per source: a daemon that has it
-// enabled must not make another daemon's plain listener look protected.
+// DockerDaemonTCP looks for TCP listeners in /etc/docker/daemon.json and on
+// the command line of every running dockerd. Unreadable sources are skipped.
 func DockerDaemonTCP() []TCPListener {
-	var result []TCPListener
-	add := func(hosts []string, tls bool) {
-		for _, h := range hosts {
-			result = append(result, TCPListener{Host: h, TLSVerify: tls})
-		}
-	}
-
+	var jsonHosts []string
+	jsonTLS := false
 	if data, err := os.ReadFile("/etc/docker/daemon.json"); err == nil {
-		add(parseDaemonJSON(data))
+		jsonHosts, jsonTLS = parseDaemonJSON(data)
 	}
 
+	var procs []daemonArgs
 	cmdlines, _ := filepath.Glob("/proc/[0-9]*/cmdline")
 	for _, path := range cmdlines {
 		data, err := os.ReadFile(path)
@@ -40,13 +34,51 @@ func DockerDaemonTCP() []TCPListener {
 		if filepath.Base(args[0]) != "dockerd" {
 			continue
 		}
-		add(parseDockerdArgs(args[1:]))
+		hosts, tls := parseDockerdArgs(args[1:])
+		procs = append(procs, daemonArgs{hosts, tls})
 	}
+	return mergeListeners(jsonHosts, jsonTLS, procs)
+}
 
+type daemonArgs struct {
+	hosts []string
+	tls   bool
+}
+
+// mergeListeners pairs listeners with TLS verification. One daemon reads its
+// settings from both daemon.json and its command line, so tlsverify in either
+// place covers hosts given in the other.
+// Daemon.json is applied to every dockerd found. A second daemon
+// with its own --config-file would inherit tlsverify from /etc/docker; read
+// --config-file per process if that setup needs to be told apart.
+func mergeListeners(jsonHosts []string, jsonTLS bool, procs []daemonArgs) []TCPListener {
+	var result []TCPListener
+	anyProcTLS := false
+	for _, p := range procs {
+		anyProcTLS = anyProcTLS || p.tls
+		for _, h := range p.hosts {
+			result = append(result, TCPListener{Host: h, TLSVerify: p.tls || jsonTLS})
+		}
+	}
+	for _, h := range jsonHosts {
+		result = append(result, TCPListener{Host: h, TLSVerify: jsonTLS || anyProcTLS})
+	}
 	return result
 }
 
-// parseDaemonJSON extracts tcp:// hosts and tlsverify from daemon.json
+// tcpHost returns the host with a tcp:// prefix if dockerd would listen on
+// TCP for it. Like dockerd, it treats a value without a scheme as TCP.
+func tcpHost(h string) (string, bool) {
+	switch {
+	case strings.HasPrefix(h, "tcp://"):
+		return h, true
+	case h == "" || strings.Contains(h, "://"):
+		return "", false
+	}
+	return "tcp://" + h, true
+}
+
+// parseDaemonJSON extracts TCP hosts and tlsverify from daemon.json
 func parseDaemonJSON(data []byte) (hosts []string, tlsVerify bool) {
 	var cfg struct {
 		Hosts     []string `json:"hosts"`
@@ -56,24 +88,38 @@ func parseDaemonJSON(data []byte) (hosts []string, tlsVerify bool) {
 		return nil, false
 	}
 	for _, h := range cfg.Hosts {
-		if strings.HasPrefix(h, "tcp://") {
+		if h, ok := tcpHost(h); ok {
 			hosts = append(hosts, h)
 		}
 	}
 	return hosts, cfg.TLSVerify
 }
 
-// parseDockerdArgs extracts tcp:// hosts and --tlsverify from dockerd arguments
+// parseDockerdArgs extracts TCP hosts and --tlsverify from dockerd arguments.
+// Covers "-H value", "--host value", "-H=value" and "--host=value".
 func parseDockerdArgs(args []string) (hosts []string, tlsVerify bool) {
-	for _, arg := range args {
-		if arg == "--tlsverify" || arg == "--tlsverify=true" {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		var value string
+		switch {
+		case arg == "--tlsverify" || arg == "--tlsverify=true":
 			tlsVerify = true
 			continue
+		case arg == "-H" || arg == "--host":
+			if i+1 == len(args) {
+				continue
+			}
+			i++
+			value = args[i]
+		case strings.HasPrefix(arg, "--host="):
+			value = strings.TrimPrefix(arg, "--host=")
+		case strings.HasPrefix(arg, "-H="):
+			value = strings.TrimPrefix(arg, "-H=")
+		default:
+			continue
 		}
-		// Covers "-H tcp://...", "-H=tcp://..." and "--host=tcp://..."
-		arg = strings.TrimPrefix(strings.TrimPrefix(arg, "--host="), "-H=")
-		if strings.HasPrefix(arg, "tcp://") {
-			hosts = append(hosts, arg)
+		if h, ok := tcpHost(value); ok {
+			hosts = append(hosts, h)
 		}
 	}
 	return hosts, tlsVerify

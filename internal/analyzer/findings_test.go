@@ -179,3 +179,25 @@ func TestLowFindingsDoNotAffectScore(t *testing.T) {
 		t.Errorf("score = %d, want 100: localhost bindings must not cost points", got)
 	}
 }
+
+// One port on two public addresses is one finding and one count
+func TestSummaryCountsWhatFindingsList(t *testing.T) {
+	containers := []models.Container{{Name: "db", State: "running", Ports: []models.PortBinding{
+		{HostIP: "203.0.113.1", HostPort: "5432", ContainerPort: "5432", Protocol: "tcp"},
+		{HostIP: "203.0.113.2", HostPort: "5432", ContainerPort: "5432", Protocol: "tcp"},
+		{HostIP: "127.0.0.1", HostPort: "6379", ContainerPort: "6379", Protocol: "tcp"},
+		{HostIP: "::1", HostPort: "6379", ContainerPort: "6379", Protocol: "tcp"},
+	}}}
+	for i := range containers[0].Ports {
+		p := &containers[0].Ports[i]
+		p.ExposureType, p.AddressScope = ClassifyHostIP(p.HostIP)
+	}
+	summary := AnalyzeContainers(containers)
+	findings := BuildFindings(containers, nil, nil)
+	if summary.Critical != 1 || len(findings) != 1 || len(findings[0].Addresses) != 2 {
+		t.Errorf("critical = %d, findings = %+v; want one of each with two addresses", summary.Critical, findings)
+	}
+	if summary.Low != 1 {
+		t.Errorf("low = %d, want 1 for the localhost port on IPv4 and IPv6", summary.Low)
+	}
+}

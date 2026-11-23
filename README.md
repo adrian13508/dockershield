@@ -82,7 +82,7 @@ works.
 
 ```bash
 VERSION=0.1.3
-ARCHIVE=skobel_${VERSION}_linux_x86_64.tar.gz   # or linux_arm64, linux_armv7, darwin_arm64, darwin_x86_64
+ARCHIVE=skobel_${VERSION}_linux_amd64.tar.gz   # or linux_arm64, linux_arm, darwin_arm64, darwin_amd64
 BASE=https://github.com/adrian13508/skobel/releases/download/v${VERSION}
 
 curl -sSLO "$BASE/$ARCHIVE"
@@ -188,8 +188,8 @@ Which ports:
 | `--from-report report.json` | TCP ports the scan found published on all interfaces or on a public address |
 | `--ports 22,5432` | the listed ports |
 
-Limits: one host per run, no ranges, at most 200 ports, at most 32 connections at a time
-(default 10), timeout at most 30 s (default 3 s). `--json` prints the results as JSON.
+Limits: one host per run, no ranges, at most 200 ports, at most 8 addresses of that host,
+at most 32 connections at a time (default 10), timeout at most 30 s (default 3 s). `--json` prints the results as JSON.
 `--fail-on-open` exits with code 2 if any probed port is open.
 
 The result is the view from the machine that ran the probe. A firewall may treat another
@@ -215,7 +215,8 @@ containers included, then `ContainerInspect` for each) and reads
 `critical`. Admin interfaces and remote access are `high`. Ports 80 and 443 are `low`,
 because they are normally meant to be public. The remaining entries are `medium`.
 A binding on all interfaces or on a public address gets the level from the table, or
-`medium` if the port is not in the table. A `localhost` binding is always `low`.
+`medium` if the port is not in the table. A `localhost` binding is always `low`, so
+`--fail-on low` also exits with code 2 for ports bound to localhost.
 A `private_or_vpn` binding is `medium` for a port the table marks `critical`, otherwise
 `low`.
 
@@ -233,8 +234,9 @@ listener, so one daemon's setting does not cover another daemon's listener.
 
 **Firewall.** The scanner runs `iptables-save` and `ip6tables-save` (each falls back to
 `sudo -n`). It looks for chains whose name starts with `DOCKER` and reads the rules in
-the `DOCKER-USER` chain. That chain counts as filtering if any rule has the target
-`DROP`, `REJECT` or a `ufw-` chain. The rules themselves are not evaluated. UFW counts
+the `DOCKER-USER` chain. That chain counts as filtering if any rule in it, or in a chain
+it jumps to, has the target `DROP`, `REJECT` or a `ufw-` chain. The rules themselves are
+not evaluated. UFW counts
 as active if `ufw status` prints `Status: active`, or, when that command fails, if
 `/etc/ufw/ufw.conf` has `ENABLED=yes`. Two findings come out of this, and only when at
 least one port is published on all interfaces or on a public address:
@@ -251,8 +253,10 @@ not change the score.
 
 **SSH.** It reads `/etc/ssh/sshd_config`, follows `Include` (for example
 `/etc/ssh/sshd_config.d/*.conf`), and reports `Port`, `PermitRootLogin`,
-`PasswordAuthentication`, `PubkeyAuthentication`, `PermitEmptyPasswords`. As in sshd,
-the first value found for a keyword is used. Reading stops at the first `Match` block.
+`PasswordAuthentication`, `PubkeyAuthentication`, `PermitEmptyPasswords`. It also reports
+`KbdInteractiveAuthentication yes` next to `PasswordAuthentication no`, because password
+logins through PAM may then still work. As in sshd, the first value found for a keyword
+is used. Reading stops at the first `Match` block, including a closing `Match all`.
 
 **fail2ban.** `which fail2ban-client`, `systemctl is-active fail2ban`,
 `fail2ban-client status` (through `sudo -n` first).

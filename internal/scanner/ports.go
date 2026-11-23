@@ -56,6 +56,7 @@ func CheckPorts(opts CheckOptions) (*CategoryResult, error) {
 
 		// Check each port
 		hasIssue := false
+		counted := map[string]bool{}
 		for _, port := range container.Ports {
 			severity := riskLevelToSeverity(port.RiskLevel)
 
@@ -63,8 +64,16 @@ func CheckPorts(opts CheckOptions) (*CategoryResult, error) {
 				continue
 			}
 
-			// Count by severity
-			switch severity {
+			// Every binding is listed, but a port published on several
+			// addresses is counted once, as in `scan`.
+			key := port.HostPort + "/" + port.ContainerPort + "/" + port.Protocol + "/" + severity
+			countAs := severity
+			if counted[key] {
+				countAs = ""
+			}
+			counted[key] = true
+
+			switch countAs {
 			case "critical":
 				summary.Critical++
 				hasIssue = true
@@ -84,8 +93,8 @@ func CheckPorts(opts CheckOptions) (*CategoryResult, error) {
 			remediation := ""
 			if port.RiskLevel == models.RiskCritical || port.RiskLevel == models.RiskHigh {
 				// Generate remediation for high-risk ports
-				remediation = fmt.Sprintf("Bind to localhost: docker run -p 127.0.0.1:%s:%s/tcp ...",
-					port.HostPort, port.ContainerPort)
+				remediation = fmt.Sprintf("Bind to localhost: docker run -p 127.0.0.1:%s:%s/%s ...",
+					port.HostPort, port.ContainerPort, port.Protocol)
 			}
 
 			findings = append(findings, Finding{

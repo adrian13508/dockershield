@@ -41,14 +41,9 @@ builds:
 archives:
   - id: skobel
     format: tar.gz
-    name_template: >-
-      {{ .ProjectName }}_
-      {{- .Version }}_
-      {{- .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    # `skobel upgrade` looks for <os>_<GOARCH>, so the name must end in
+    # exactly that: linux_amd64, linux_arm64, linux_arm (ARMv7).
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
         format: zip
@@ -102,8 +97,11 @@ release:
     ### Quick Install
 
     ```bash
-    # Linux/macOS
-    curl -sSL https://raw.githubusercontent.com/adrian13508/skobel/main/install.sh | bash
+    # Linux/macOS: download the script, read it, then run it.
+    # It verifies the archive against checksums.txt.
+    curl -sSLO https://raw.githubusercontent.com/adrian13508/skobel/main/install.sh
+    less install.sh
+    bash install.sh
 
     # Or download the binary for your platform below
     ```

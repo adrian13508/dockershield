@@ -129,7 +129,7 @@ func readSSHDDirectives(path string, values map[string]string, depth int) error 
 		case "match":
 			return nil
 		case "include":
-			if depth >= 8 { // ponytail: fixed depth limit instead of loop detection
+			if depth >= 8 { // Fixed depth limit instead of loop detection
 				continue
 			}
 			for _, pattern := range parts[1:] {
@@ -198,6 +198,17 @@ func (s *SSHConfig) analyzeSecurityPosture() {
 			Recommendation: "Explicitly set 'PasswordAuthentication no' and use SSH keys",
 		})
 		s.SecurityScore -= 15
+	}
+
+	// Keyboard-interactive authentication usually means PAM, which asks for
+	// the account password even when PasswordAuthentication is off.
+	if s.PasswordAuth == "no" && s.ChallengeResponse == "yes" {
+		s.Issues = append(s.Issues, SSHSecurityIssue{
+			Severity:       "MEDIUM",
+			Issue:          "Keyboard-interactive authentication is enabled, so password logins through PAM may still work",
+			Recommendation: "Set 'KbdInteractiveAuthentication no' unless you use it for a second factor",
+		})
+		s.SecurityScore -= 10
 	}
 
 	// Check PermitEmptyPasswords

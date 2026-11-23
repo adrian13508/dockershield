@@ -159,7 +159,7 @@ func portFindings(c models.Container) []models.Finding {
 		if severityRank[p.RiskLevel] < severityRank[models.RiskMedium] {
 			continue
 		}
-		key := p.HostPort + "/" + p.ContainerPort + "/" + p.Protocol + "/" + string(p.RiskLevel)
+		key := bindingKey(p)
 		if i, ok := index[key]; ok {
 			out[i].Addresses = append(out[i].Addresses, p.HostIP)
 			continue

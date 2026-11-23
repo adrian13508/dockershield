@@ -3,6 +3,7 @@ package security
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -59,5 +60,26 @@ func TestSSHConfigMissingFile(t *testing.T) {
 	cfg := &SSHConfig{ConfigFile: filepath.Join(t.TempDir(), "nope")}
 	if err := cfg.parseConfig(); err == nil {
 		t.Error("expected an error for a missing config file")
+	}
+}
+
+func TestKbdInteractiveKeepsPasswordLoginsPossible(t *testing.T) {
+	has := func(c *SSHConfig) bool {
+		for _, issue := range c.Issues {
+			if strings.Contains(issue.Issue, "Keyboard-interactive") {
+				return true
+			}
+		}
+		return false
+	}
+	on := &SSHConfig{PasswordAuth: "no", ChallengeResponse: "yes", SecurityScore: 100}
+	on.analyzeSecurityPosture()
+	if !has(on) {
+		t.Error("PasswordAuthentication no with KbdInteractiveAuthentication yes must raise an issue")
+	}
+	off := &SSHConfig{PasswordAuth: "no", ChallengeResponse: "no", SecurityScore: 100}
+	off.analyzeSecurityPosture()
+	if has(off) {
+		t.Error("no issue expected when keyboard-interactive is off")
 	}
 }

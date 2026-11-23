@@ -115,16 +115,6 @@ func (m *Manager) GetAge() (time.Duration, error) {
 	return time.Since(result.Timestamp), nil
 }
 
-// IsStale checks if state is older than the given duration
-func (m *Manager) IsStale(maxAge time.Duration) (bool, error) {
-	age, err := m.GetAge()
-	if err != nil {
-		return false, err
-	}
-
-	return age > maxAge, nil
-}
-
 // GetPath returns the state file path
 func (m *Manager) GetPath() string {
 	return m.stateFile

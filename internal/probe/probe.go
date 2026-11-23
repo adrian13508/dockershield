@@ -28,6 +28,7 @@ import (
 // general-purpose scanner.
 const (
 	MaxPorts       = 200
+	MaxAddresses   = 8 // addresses of the one host; ports x addresses connections are made
 	MaxConcurrency = 32
 	MaxTimeout     = 30 * time.Second
 )
@@ -198,7 +199,9 @@ func probeOne(ctx context.Context, addr netip.Addr, target Target, timeout time.
 func classifyDialError(err error) (state, note string) {
 	var netErr net.Error
 	switch {
-	case errors.Is(err, syscall.ECONNREFUSED):
+	// 10061 is WSAECONNREFUSED: on Windows a refusal does not match
+	// syscall.ECONNREFUSED. Not tested on Windows.
+	case errors.Is(err, syscall.ECONNREFUSED), errors.Is(err, syscall.Errno(10061)):
 		return StateClosed, "connection refused"
 	case errors.Is(err, syscall.ENETUNREACH), errors.Is(err, syscall.EHOSTUNREACH), errors.Is(err, syscall.EADDRNOTAVAIL):
 		return StateUnreachable, "no route from this machine"
@@ -225,6 +228,11 @@ func identify(conn net.Conn, expected string, timeout time.Duration) (service, b
 			// The handshake packet carries the server version as a NUL-terminated string
 			version, _, _ := bytes.Cut(data[5:], []byte{0})
 			return service, printable(version), ""
+		}
+		if service == "MySQL" && data[4] == 0xff && len(data) > 7 {
+			// Error packet (for example "Host ... is not allowed to connect"):
+			// the message follows the marker and a two-byte error code
+			return service, printable(data[7:]), ""
 		}
 		return service, printable(data), ""
 	}
@@ -254,16 +262,18 @@ func identify(conn net.Conn, expected string, timeout time.Duration) (service, b
 			}
 			server := header(data, "Server")
 			if strings.HasPrefix(server, "Docker/") {
-				return "Docker API", server, "unencrypted Docker API"
+				return "Docker API", printable([]byte(server)), "unencrypted Docker API"
 			}
-			return "HTTP", strings.TrimSpace(firstLine(data) + " " + server), ""
+			return "HTTP", printable([]byte(firstLine(data) + " " + server)), ""
 		}
 	}
 	return "", "", "open, service not identified"
 }
 
 // handshakeFor picks the client-first handshake for an expected service.
-// TLS-only ports get none: a plaintext request would tell us nothing.
+// Services that normally speak TLS (HTTPS, Kubernetes API) get none: a
+// plaintext request would tell us nothing. Docker gets the HTTP request on
+// both 2375 and 2376, because an answer on either means an open API.
 func handshakeFor(expected string) string {
 	switch expected {
 	case "PostgreSQL":

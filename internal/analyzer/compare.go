@@ -10,34 +10,45 @@ type Diff struct {
 	Resolved           []models.Finding // in the old report only
 	New                []models.Finding // in the new report only
 	Remaining          []models.Finding // in both
-	Recomputed         bool             // a report had no findings list (v0.1.3 or older) and was rated with current rules
+	Recomputed         bool             // a report had no findings list (v0.1.3 or older): both were rated again with current rules
 }
 
 // Compare matches findings of two reports by ID, container and port.
-func Compare(old, new models.ScanResult) Diff {
-	d := Diff{OldScore: old.OverallScore, NewScore: new.OverallScore}
-	oldFindings := findingsOf(&old, &d)
-	newFindings := findingsOf(&new, &d)
-	if d.Recomputed {
-		d.OldScore, d.NewScore = old.OverallScore, new.OverallScore
+// If either report was written before findings existed (v0.1.3 or older),
+// both are rated again from their container lists with the current rules, so
+// that the two sides are measured the same way. Firewall and daemon findings
+// cannot be reconstructed for such a report and are left out on both sides.
+func Compare(before, after models.ScanResult) Diff {
+	d := Diff{OldScore: before.OverallScore, NewScore: after.OverallScore}
+	oldFindings, newFindings := before.Findings, after.Findings
+	if oldFindings == nil || newFindings == nil {
+		d.Recomputed = true
+		oldFindings, d.OldScore = rate(&before)
+		newFindings, d.NewScore = rate(&after)
 	}
 
-	inNew := map[string]bool{}
-	for _, f := range newFindings {
-		inNew[findingKey(f)] = true
-	}
-	inOld := map[string]bool{}
+	// Counts, not a set: two findings can share a key (the same host port
+	// on two addresses that are rated differently).
+	inOld := map[string]int{}
 	for _, f := range oldFindings {
-		inOld[findingKey(f)] = true
-		if !inNew[findingKey(f)] {
-			d.Resolved = append(d.Resolved, f)
-		}
+		inOld[findingKey(f)]++
 	}
+	inNew := map[string]int{}
 	for _, f := range newFindings {
-		if inOld[findingKey(f)] {
+		key := findingKey(f)
+		inNew[key]++
+		if inNew[key] <= inOld[key] {
 			d.Remaining = append(d.Remaining, f)
 		} else {
 			d.New = append(d.New, f)
+		}
+	}
+	seen := map[string]int{}
+	for _, f := range oldFindings {
+		key := findingKey(f)
+		seen[key]++
+		if seen[key] > inNew[key] {
+			d.Resolved = append(d.Resolved, f)
 		}
 	}
 	return d
@@ -51,15 +62,8 @@ func findingKey(f models.Finding) string {
 	return key
 }
 
-// findingsOf returns the report's findings. Reports written before findings
-// existed are rated again from their container list with the current rules,
-// so that both sides of a comparison are measured the same way. Firewall and
-// daemon findings cannot be reconstructed for such reports.
-func findingsOf(report *models.ScanResult, d *Diff) []models.Finding {
-	if report.Findings != nil {
-		return report.Findings
-	}
-	d.Recomputed = true
+// rate computes findings and score from a report's container list
+func rate(report *models.ScanResult) ([]models.Finding, int) {
 	for i := range report.Containers {
 		for j := range report.Containers[i].Ports {
 			p := &report.Containers[i].Ports[j]
@@ -69,6 +73,5 @@ func findingsOf(report *models.ScanResult, d *Diff) []models.Finding {
 	summary := AnalyzeContainers(report.Containers)
 	findings := BuildFindings(report.Containers, nil, nil)
 	AddToSummary(&summary, findings)
-	report.OverallScore = CalculateSecurityScore(summary)
-	return findings
+	return findings, CalculateSecurityScore(summary)
 }

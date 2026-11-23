@@ -54,3 +54,36 @@ func TestCompareOldReportIsRatedWithCurrentRules(t *testing.T) {
 		t.Errorf("resolved = %+v, new = %+v", d.Resolved, d.New)
 	}
 }
+
+// A v0.1.3 report against a current one: the firewall finding of the new
+// report must not show up as new, because the old report cannot have it.
+func TestCompareMixedVersionsRatesBothSides(t *testing.T) {
+	db := models.Container{Name: "db", State: "running", Ports: []models.PortBinding{
+		{HostIP: "0.0.0.0", HostPort: "5432", ContainerPort: "5432", Protocol: "tcp"},
+	}}
+	old := models.ScanResult{OverallScore: 75, Containers: []models.Container{db}}
+	current := models.ScanResult{OverallScore: 65, Containers: []models.Container{db}, Findings: []models.Finding{
+		{ID: FindingPortExposed, Container: "db", Port: "5432/tcp", Severity: models.RiskCritical},
+		{ID: FindingUFWBypassed, Severity: models.RiskHigh},
+	}}
+	d := Compare(old, current)
+	if !d.Recomputed || len(d.New) != 0 || len(d.Resolved) != 0 || len(d.Remaining) != 1 {
+		t.Errorf("new = %+v, resolved = %+v, remaining = %+v; want one remaining", d.New, d.Resolved, d.Remaining)
+	}
+	if d.OldScore != d.NewScore {
+		t.Errorf("scores = %d -> %d, want equal for the same containers", d.OldScore, d.NewScore)
+	}
+}
+
+// Two findings can share a key; resolving one of them must show
+func TestCompareCountsFindingsWithTheSameKey(t *testing.T) {
+	public := models.Finding{ID: FindingPortExposed, Container: "db", Port: "5432/tcp", Severity: models.RiskCritical}
+	private := models.Finding{ID: FindingPortExposed, Container: "db", Port: "5432/tcp", Severity: models.RiskMedium}
+	d := Compare(
+		models.ScanResult{Findings: []models.Finding{public, private}},
+		models.ScanResult{Findings: []models.Finding{private}},
+	)
+	if len(d.Resolved) != 1 || len(d.Remaining) != 1 || len(d.New) != 0 {
+		t.Errorf("resolved = %d, remaining = %d, new = %d; want 1, 1, 0", len(d.Resolved), len(d.Remaining), len(d.New))
+	}
+}

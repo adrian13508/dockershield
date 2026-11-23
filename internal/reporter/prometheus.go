@@ -38,7 +38,7 @@ func (r *PrometheusReporter) Generate(
 	header(&b, "skobel_security_score", "Overall security score (0-100, higher is better).")
 	fmt.Fprintf(&b, "skobel_security_score %d\n", score)
 
-	header(&b, "skobel_risks", "Detected risks by severity across all containers.")
+	header(&b, "skobel_risks", "Detected risks by severity: published ports, container settings, firewall and daemon findings.")
 	for _, s := range []struct {
 		severity string
 		count    int
@@ -66,7 +66,7 @@ func (r *PrometheusReporter) Generate(
 		fmt.Fprintf(&b, "skobel_containers{state=\"%s\"} %d\n", labelEscaper.Replace(s), states[s])
 	}
 
-	header(&b, "skobel_exposed_port", "Container port published on a public interface (0.0.0.0 or ::). Value is always 1; alert on the labels.")
+	header(&b, "skobel_exposed_port", "Container port published on all interfaces or on a public address. Value is always 1; alert on the labels.")
 	// A port published on IPv4 and IPv6 yields two bindings with the same
 	// labels; a duplicate series makes the textfile collector reject the file.
 	seen := map[string]bool{}

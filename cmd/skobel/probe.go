@@ -97,7 +97,7 @@ func runProbe(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("probe takes exactly one host name or IP address, not a range or list")
 	}
 	if probeTimeout <= 0 || probeTimeout > probe.MaxTimeout {
-		return fmt.Errorf("--timeout must be between 1ms and %s", probe.MaxTimeout)
+		return fmt.Errorf("--timeout must be greater than 0 and at most %s", probe.MaxTimeout)
 	}
 	if probeConcurrency < 1 || probeConcurrency > probe.MaxConcurrency {
 		return fmt.Errorf("--concurrency must be between 1 and %d", probe.MaxConcurrency)
@@ -129,15 +129,21 @@ own or are authorized to test; probing other people's systems may be illegal.
 If %s is yours, run the command again with --i-own-this-host.
 This is asked once per host and remembered in %s`, host, host, confirmedFile)
 		}
-		if err := confirmHost(confirmedFile, host); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: could not remember the confirmation: %v\n", err)
-		}
 	}
 
 	ctx := context.Background()
 	addrs, err := resolve(ctx, host, probeIPv4Only, probeIPv6Only)
 	if err != nil {
 		return err
+	}
+	if len(addrs) > probe.MaxAddresses {
+		return fmt.Errorf("%s resolves to %d addresses, the limit is %d per run; pass one address instead", host, len(addrs), probe.MaxAddresses)
+	}
+	// Remembered only once the name has resolved, so a typo is not stored
+	if !isConfirmed(confirmedFile, host) {
+		if err := confirmHost(confirmedFile, host); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not remember the confirmation: %v\n", err)
+		}
 	}
 
 	if !probeJSON {
@@ -247,6 +253,15 @@ func verdict(r probe.Result, fromReport bool) string {
 	if !fromReport {
 		return r.State
 	}
+	if !boundOnFamily(r) {
+		// The report shows this port on the other address family only
+		switch r.State {
+		case probe.StateOpen:
+			return "open, although the report shows no " + familyName(r.Family) + " binding"
+		case probe.StateFiltered, probe.StateClosed:
+			return "not published on " + familyName(r.Family) + " according to the report"
+		}
+	}
 	switch r.State {
 	case probe.StateOpen:
 		return "published and confirmed from outside"
@@ -259,6 +274,27 @@ func verdict(r probe.Result, fromReport bool) string {
 	default:
 		return "not tested: " + r.Note
 	}
+}
+
+// boundOnFamily reports whether the scan saw the port bound to an address of
+// the family that was probed. Without that information it assumes yes.
+func boundOnFamily(r probe.Result) bool {
+	if len(r.Bound) == 0 {
+		return true
+	}
+	for _, b := range r.Bound {
+		if strings.Contains(b, ":") == (r.Family == "ipv6") {
+			return true
+		}
+	}
+	return false
+}
+
+func familyName(family string) string {
+	if family == "ipv6" {
+		return "IPv6"
+	}
+	return "IPv4"
 }
 
 func printProbe(out probeOutput, showAll bool) {

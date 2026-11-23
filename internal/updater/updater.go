@@ -32,7 +32,6 @@ const (
 type UpdateInfo struct {
 	CurrentVersion string
 	LatestVersion  string
-	UpdateURL      string
 	ReleaseNotes   string
 	Available      bool
 }
@@ -55,37 +54,37 @@ func CheckForUpdates(currentVersion string) (*UpdateInfo, error) {
 	return &UpdateInfo{
 		CurrentVersion: currentVersion,
 		LatestVersion:  latest.Version.String(),
-		UpdateURL:      latest.URL,
 		ReleaseNotes:   latest.ReleaseNotes,
 		Available:      latest.Version.GT(current),
 	}, nil
 }
 
 // DoSelfUpdate downloads the latest release, verifies its SHA256 against the
-// release's checksums.txt and replaces the running binary.
-func DoSelfUpdate(currentVersion string) error {
+// release's checksums.txt and replaces the running binary. It returns the
+// version it installed.
+func DoSelfUpdate(currentVersion string) (string, error) {
 	current, err := semver.Parse(currentVersion)
 	if err != nil {
-		return fmt.Errorf("invalid current version: %w", err)
+		return "", fmt.Errorf("invalid current version: %w", err)
 	}
 
 	latest, found, err := selfupdate.DetectLatest(GitHubOwner + "/" + GitHubRepo)
 	if err != nil {
-		return fmt.Errorf("failed to check for updates: %w", err)
+		return "", fmt.Errorf("failed to check for updates: %w", err)
 	}
 	if !found || latest == nil {
-		return fmt.Errorf("no releases found for this platform")
+		return "", fmt.Errorf("no releases found for this platform")
 	}
 	if !latest.Version.GT(current) {
-		return fmt.Errorf("already on latest version %s", current)
+		return "", fmt.Errorf("already on latest version %s", current)
 	}
 
 	exe, err := os.Executable()
 	if err != nil {
-		return fmt.Errorf("cannot locate the running binary: %w", err)
+		return "", fmt.Errorf("cannot locate the running binary: %w", err)
 	}
 	client := &http.Client{Timeout: 5 * time.Minute}
-	return installVerified(client, latest.AssetURL, exe)
+	return latest.Version.String(), installVerified(client, latest.AssetURL, exe)
 }
 
 // installVerified downloads the archive once, checks it against checksums.txt

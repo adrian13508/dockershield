@@ -97,3 +97,21 @@ func TestResolveLiteralAndFamilyFilter(t *testing.T) {
 		t.Error("an IPv6 literal with --ipv4 must fail")
 	}
 }
+
+func TestVerdictUsesTheBoundFamily(t *testing.T) {
+	v4only := probe.Target{Port: 5432, Bound: []string{"0.0.0.0"}}
+	cases := []struct {
+		family, state, want string
+	}{
+		{"ipv4", probe.StateOpen, "published and confirmed from outside"},
+		{"ipv6", probe.StateClosed, "not published on IPv6 according to the report"},
+		{"ipv6", probe.StateFiltered, "not published on IPv6 according to the report"},
+		{"ipv6", probe.StateOpen, "open, although the report shows no IPv6 binding"},
+	}
+	for _, c := range cases {
+		r := probe.Result{Target: v4only, Family: c.family, State: c.state}
+		if got := verdict(r, true); got != c.want {
+			t.Errorf("verdict(%s, %s) = %q, want %q", c.family, c.state, got, c.want)
+		}
+	}
+}

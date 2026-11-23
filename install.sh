@@ -42,9 +42,9 @@ main() {
     esac
 
     case "$(uname -m)" in
-        x86_64)        arch="x86_64" ;;
+        x86_64|amd64)  arch="amd64" ;;
         aarch64|arm64) arch="arm64" ;;
-        armv7l|armv7)  arch="armv7" ;;
+        armv7l|armv7)  arch="arm" ;;
         *) fail "unsupported architecture: $(uname -m)" ;;
     esac
 

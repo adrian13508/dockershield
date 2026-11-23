@@ -71,11 +71,11 @@ func TestAnalyze(t *testing.T) {
 }
 
 func TestParseRulesChains(t *testing.T) {
-	chains, rules := parseRules(dockerDefault)
+	chains, byChain := parseRules(dockerDefault)
 	if !reflect.DeepEqual(chains, []string{"DOCKER", "DOCKER-USER"}) {
 		t.Errorf("chains = %v", chains)
 	}
-	if len(rules) != 1 {
+	if rules := byChain[dockerUserChain]; len(rules) != 1 {
 		t.Errorf("DOCKER-USER rules = %v", rules)
 	}
 }
@@ -100,6 +100,9 @@ func TestParseDaemonJSON(t *testing.T) {
 	if !reflect.DeepEqual(hosts, []string{"tcp://0.0.0.0:2375"}) || tls {
 		t.Errorf("hosts = %v, tls = %v", hosts, tls)
 	}
+	if hosts, _ := parseDaemonJSON([]byte(`{"hosts": ["0.0.0.0:2375", "fd://"]}`)); !reflect.DeepEqual(hosts, []string{"tcp://0.0.0.0:2375"}) {
+		t.Errorf("a host without a scheme is TCP, got %v", hosts)
+	}
 	if hosts, _ := parseDaemonJSON([]byte(`not json`)); hosts != nil {
 		t.Errorf("invalid JSON must yield no hosts, got %v", hosts)
 	}
@@ -115,11 +118,64 @@ func TestParseDockerdArgs(t *testing.T) {
 		{[]string{"-H", "unix:///var/run/docker.sock", "-H", "tcp://0.0.0.0:2375"}, []string{"tcp://0.0.0.0:2375"}, false},
 		{[]string{"--host=tcp://0.0.0.0:2376", "--tlsverify"}, []string{"tcp://0.0.0.0:2376"}, true},
 		{[]string{"-H=tcp://10.0.0.1:2375"}, []string{"tcp://10.0.0.1:2375"}, false},
+		{[]string{"-H", "0.0.0.0:2375"}, []string{"tcp://0.0.0.0:2375"}, false},
+		{[]string{"--host", "tcp://0.0.0.0:2375", "--log-level", "tcp://not-a-host"}, []string{"tcp://0.0.0.0:2375"}, false},
 	}
 	for _, c := range cases {
 		hosts, tls := parseDockerdArgs(c.args)
 		if !reflect.DeepEqual(hosts, c.hosts) || tls != c.tls {
 			t.Errorf("parseDockerdArgs(%v) = %v, %v; want %v, %v", c.args, hosts, tls, c.hosts, c.tls)
 		}
+	}
+}
+
+func TestMergeListeners(t *testing.T) {
+	// tlsverify in daemon.json, listener on the command line, and the reverse
+	got := mergeListeners(nil, true, []daemonArgs{{[]string{"tcp://0.0.0.0:2376"}, false}})
+	if len(got) != 1 || !got[0].TLSVerify {
+		t.Errorf("tlsverify from daemon.json must cover a command line host: %+v", got)
+	}
+	got = mergeListeners([]string{"tcp://0.0.0.0:2376"}, false, []daemonArgs{{nil, true}})
+	if len(got) != 1 || !got[0].TLSVerify {
+		t.Errorf("--tlsverify must cover a daemon.json host: %+v", got)
+	}
+	got = mergeListeners([]string{"tcp://0.0.0.0:2375"}, false, []daemonArgs{{[]string{"tcp://10.0.0.1:2375"}, false}})
+	if len(got) != 2 || got[0].TLSVerify || got[1].TLSVerify {
+		t.Errorf("no tlsverify anywhere: %+v", got)
+	}
+}
+
+func TestFiltersFollowsUserChains(t *testing.T) {
+	const viaChain = `*filter
+:DOCKER-USER - [0:0]
+:DOCKER-USER-EXTRA - [0:0]
+:MY-FILTER - [0:0]
+-A DOCKER-USER -j MY-FILTER
+-A DOCKER-USER-EXTRA -j DROP
+-A MY-FILTER -s 203.0.113.0/24 -j DROP
+COMMIT
+`
+	if a := analyze(viaChain, "", false, true); !a.DockerUserFiltered || len(a.DockerUserRules) != 1 {
+		t.Errorf("a DROP in a chain DOCKER-USER jumps to counts as filtering: %+v", a)
+	}
+	const otherChainOnly = `*filter
+:DOCKER-USER - [0:0]
+:DOCKER-USER-EXTRA - [0:0]
+-A DOCKER-USER -j RETURN
+-A DOCKER-USER-EXTRA -j DROP
+COMMIT
+`
+	if a := analyze(otherChainOnly, "", false, true); a.DockerUserFiltered {
+		t.Error("rules of DOCKER-USER-EXTRA must not be read as DOCKER-USER rules")
+	}
+	const loop = `*filter
+:DOCKER-USER - [0:0]
+:A - [0:0]
+-A DOCKER-USER -j A
+-A A -j DOCKER-USER
+COMMIT
+`
+	if a := analyze(loop, "", false, true); a.DockerUserFiltered {
+		t.Error("a jump loop without DROP is not filtering")
 	}
 }

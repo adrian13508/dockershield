@@ -41,16 +41,15 @@ func padTableLine(content string, width int) string {
 
 // StatusSummary represents a quick status summary
 type StatusSummary struct {
-	LastScan      time.Time `json:"last_scan"`
-	AgeMinutes    int       `json:"age_minutes"`
-	AgeHuman      string    `json:"age_human"`
-	Containers    int       `json:"containers"`
-	Critical      int       `json:"critical"`
-	High          int       `json:"high"`
-	Medium        int       `json:"medium"`
-	Low           int       `json:"low"`
-	OverallScore  int       `json:"overall_score"`
-	NewContainers int       `json:"new_containers,omitempty"`
+	LastScan     time.Time `json:"last_scan"`
+	AgeMinutes   int       `json:"age_minutes"`
+	AgeHuman     string    `json:"age_human"`
+	Containers   int       `json:"containers"`
+	Critical     int       `json:"critical"`
+	High         int       `json:"high"`
+	Medium       int       `json:"medium"`
+	Low          int       `json:"low"`
+	OverallScore int       `json:"overall_score"`
 }
 
 // FormatStatusTerminal displays status summary in terminal
@@ -66,13 +65,20 @@ func FormatStatusTerminal(result *models.ScanResult) {
 	age := time.Since(result.Timestamp)
 	ageStr := formatDuration(age)
 
+	running := 0
+	for _, c := range result.Containers {
+		if c.State == "running" {
+			running++
+		}
+	}
+
 	const boxWidth = 42
 
 	fmt.Println("┌────────────────────────────────────────────┐")
 	fmt.Printf("│  %s  │\n", padTableLine(cyan("Skobel Status"), boxWidth-2))
 	fmt.Println("├────────────────────────────────────────────┤")
 	fmt.Printf("│  %s  │\n", padTableLine(fmt.Sprintf("Last Scan: %s", white(ageStr)), boxWidth-2))
-	fmt.Printf("│  %s  │\n", padTableLine(fmt.Sprintf("Containers: %s running", white(fmt.Sprintf("%d", len(result.Containers)))), boxWidth-2))
+	fmt.Printf("│  %s  │\n", padTableLine(fmt.Sprintf("Containers: %s running", white(fmt.Sprintf("%d", running))), boxWidth-2))
 	fmt.Printf("│  %s  │\n", padTableLine("", boxWidth-2))
 
 	// Risk summary

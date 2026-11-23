@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/adrian13508/skobel/pkg/models"
@@ -62,25 +61,24 @@ func (r *JSONReporter) WriteToFile(data []byte, path string) error {
 	return writeReportFile(data, path)
 }
 
-// writeReportFile writes report data to a relative path with restrictive permissions
+// writeReportFile writes report data with owner-only permissions. It writes
+// a temporary file in the same directory and renames it, so that a reader
+// such as the node_exporter textfile collector never sees half a file.
 func writeReportFile(data []byte, path string) error {
-	// Validate path to prevent directory traversal
-	cleanPath := filepath.Clean(path)
-
-	// Check if path is absolute - reject absolute paths outside current directory
-	if filepath.IsAbs(cleanPath) {
-		return fmt.Errorf("absolute paths are not allowed for security reasons")
-	}
-
-	// Check for directory traversal attempts
-	if strings.Contains(cleanPath, "..") {
-		return fmt.Errorf("path traversal is not allowed for security reasons")
-	}
-
-	// Write to file with restrictive permissions (owner read/write only)
-	err := os.WriteFile(cleanPath, data, 0600)
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".skobel-*")
 	if err != nil {
-		return fmt.Errorf("failed to write file %s: %w", cleanPath, err)
+		return fmt.Errorf("failed to write file %s: %w", path, err)
+	}
+	defer func() { _ = os.Remove(tmp.Name()) }() // no-op after a successful rename
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("failed to write file %s: %w", path, err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("failed to write file %s: %w", path, err)
+	}
+	if err := os.Rename(tmp.Name(), path); err != nil {
+		return fmt.Errorf("failed to write file %s: %w", path, err)
 	}
 	return nil
 }

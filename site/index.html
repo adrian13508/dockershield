@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DockerShield: which container ports does your server publish?</title>
+<title>Skobel: which container ports does your server publish?</title>
 <meta name="description" content="Read-only command-line scanner that lists published Docker container ports, checks whether UFW or DOCKER-USER filters them, and can verify from another machine what is reachable.">
 <style>
   :root { --fg: #101828; --muted: #475467; --line: #d0d5dd; --bg: #fff; --code: #f2f4f7; --link: #175cd3; }
@@ -26,10 +26,10 @@
 </head>
 <body>
 
-<h1>DockerShield</h1>
+<h1>Skobel</h1>
 <p>Docker publishes container ports by writing its own iptables rules. A port mapped with <code>-p 5432:5432</code> is reachable from outside even when UFW says it is denied (<a href="https://docs.docker.com/engine/network/packet-filtering-firewalls/#docker-and-ufw">Docker documentation</a>).</p>
-<p>DockerShield is a read-only command-line scanner for a single Linux host. It is open source (MIT) and makes no network requests during a scan.</p>
-<p><a href="https://github.com/adrian13508/dockershield">Source, documentation and releases on GitHub</a></p>
+<p>Skobel is a read-only command-line scanner for a single Linux host. It is open source (Apache License 2.0) and makes no network requests during a scan.</p>
+<p><a href="https://github.com/adrian13508/skobel">Source, documentation and releases on GitHub</a></p>
 
 <h2>What it does</h2>
 <ul>
@@ -46,12 +46,12 @@
   <li>It does not fix anything and does not manage firewall rules.</li>
   <li>It detects filtering rules; it does not evaluate them. A rule in <code>DOCKER-USER</code> may not cover every port.</li>
   <li>It does not scan images for vulnerabilities.</li>
-  <li>The full list is in the <a href="https://github.com/adrian13508/dockershield#limitations">Limitations section of the README</a>.</li>
+  <li>The full list is in the <a href="https://github.com/adrian13508/skobel#limitations">Limitations section of the README</a>.</li>
 </ul>
 
 <h2>Example</h2>
 <p>From a scan of the deliberately misconfigured test services in the repository:</p>
-<pre><code>1. [CRITICAL] Container 'dockershield-test-db-1': PostgreSQL published on all interfaces
+<pre><code>1. [CRITICAL] Container 'skobel-test-db-1': PostgreSQL published on all interfaces
    Port: 5432/tcp on 0.0.0.0, ::
    Why: Other machines can connect to this port unless a firewall outside Docker blocks it.
         UFW rules do not apply to published container ports by default.
@@ -60,15 +60,15 @@
        ports:
          - "127.0.0.1:5432:5432"</code></pre>
 <p>The same port checked from a second machine, after it was blocked for IPv4 only:</p>
-<pre><code>5432/tcp  (container dockershield-test-db-1; expected PostgreSQL; bound on 0.0.0.0, ::)
+<pre><code>5432/tcp  (container skobel-test-db-1; expected PostgreSQL; bound on 0.0.0.0, ::)
   192.168.0.2      published but blocked on the way (no answer)
   fd00:d5:d5::2    published and confirmed from outside: PostgreSQL</code></pre>
-<p><a href="https://github.com/adrian13508/dockershield/blob/main/EXAMPLE_OUTPUT.md">Full, unedited output</a></p>
+<p><a href="https://github.com/adrian13508/skobel/blob/main/EXAMPLE_OUTPUT.md">Full, unedited output</a></p>
 
 <h2>Install</h2>
-<p>Release binaries with SHA256 checksums, an install script and build-from-source instructions are in the <a href="https://github.com/adrian13508/dockershield#install">README</a>.</p>
+<p>Release binaries with SHA256 checksums, an install script and build-from-source instructions are in the <a href="https://github.com/adrian13508/skobel#install">README</a>.</p>
 
-<h2 id="teams">DockerShield for teams (coming soon)</h2>
+<h2 id="teams">Skobel for teams (coming soon)</h2>
 <p>The command-line tool checks one server at a time and keeps no history. A hosted version for people who run several servers is being considered. It is not built. Ideas so far:</p>
 <ul>
   <li>Scan results of all servers in one place, with history.</li>
@@ -83,7 +83,8 @@
 <p class="muted">The form is hosted by Google Forms and opens on docs.google.com. It asks for an email address, the number of servers and what matters most to you. Your answers go to Adrian Kurowski, the author, and are stored in Google Forms. The email address is used only to tell you when a team version is available or that the idea was dropped. It is not shared with anyone and not used for anything else. To have your entry deleted, write to <a href="mailto:adrian@kurowski.dev">adrian@kurowski.dev</a>.</p>
 
 <footer class="muted">
-  <p>DockerShield is written by Adrian Kurowski. Contact: <a href="mailto:adrian@kurowski.dev">adrian@kurowski.dev</a>. This page loads no scripts, fonts or trackers from other sites. The waitlist form is on Google Forms.</p>
+  <p>Skobel is written by Adrian Kurowski. Contact: <a href="mailto:adrian@kurowski.dev">adrian@kurowski.dev</a>. This page loads no scripts, fonts or trackers from other sites. The waitlist form is on Google Forms.</p>
+  <p>Skobel was called DockerShield up to v0.1.3. It is not affiliated with or endorsed by Docker, Inc. Docker and the Docker logo are trademarks or registered trademarks of Docker, Inc. in the United States and/or other countries.</p>
 </footer>
 
 <script>

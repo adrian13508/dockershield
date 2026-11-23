@@ -3,7 +3,7 @@ package analyzer
 import (
 	"testing"
 
-	"github.com/adrian13508/dockershield/pkg/models"
+	"github.com/adrian13508/skobel/pkg/models"
 )
 
 func TestClassifyHostIP(t *testing.T) {

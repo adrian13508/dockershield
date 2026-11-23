@@ -31,7 +31,7 @@ func checkCanReadIptables() CheckResult {
 					Status:  StatusFail,
 					Value:   "no",
 					Message: "Cannot read iptables (need root)",
-					Fix:     "Run with sudo for iptables analysis: sudo dockershield scan",
+					Fix:     "Run with sudo for iptables analysis: sudo skobel scan",
 				}
 			}
 		}
@@ -104,7 +104,7 @@ func checkCanWriteState() CheckResult {
 		}
 	}
 
-	stateDir := filepath.Join(homeDir, ".dockershield")
+	stateDir := filepath.Join(homeDir, ".skobel")
 
 	// Create directory if it doesn't exist
 	err = os.MkdirAll(stateDir, 0755)
@@ -125,7 +125,7 @@ func checkCanWriteState() CheckResult {
 			Status:  StatusFail,
 			Value:   "no",
 			Message: "Cannot write to state directory",
-			Fix:     "Check permissions on ~/.dockershield/",
+			Fix:     "Check permissions on ~/.skobel/",
 		}
 	}
 

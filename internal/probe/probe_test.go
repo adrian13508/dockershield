@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/adrian13508/dockershield/pkg/models"
+	"github.com/adrian13508/skobel/pkg/models"
 )
 
 func TestMain(m *testing.M) {

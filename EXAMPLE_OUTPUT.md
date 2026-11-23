@@ -2,6 +2,10 @@
 
 Everything below is unedited output from real runs. Nothing was written by hand.
 
+The runs were recorded when the tool was still called DockerShield. The name was then
+replaced in this file (command, container prefix, metric prefix), and the scan and
+Prometheus sections were compared against a new run of the renamed binary.
+
 Environment: an isolated Docker daemon (`docker:dind`, Alpine Linux) running the
 services from [test/exposed/compose.yml](test/exposed/compose.yml). The scanner was built
 from this repository and run as root inside that environment.
@@ -11,10 +15,10 @@ host sections report missing files and tools. On a Debian or Ubuntu server those
 show real values. The Docker-in-Docker daemon listens on TCP with TLS, which is why the
 scan reports a `docker_api_tcp` finding about the host itself.
 
-## `dockershield scan`
+## `skobel scan`
 
 ```
-🔍 DockerShield Security Scanner
+🔍 Skobel Security Scanner
 ================================
 
 Connecting to Docker... ✓
@@ -40,18 +44,18 @@ Found 6 container(s)
 
 📦 RUNNING CONTAINERS
 ═══════════════════════════════════════════════
-❌ ISSUES dockershield-test-db-1 - CRITICAL×1
-✅ OK dockershield-test-cache-1
-❌ ISSUES dockershield-test-admin-1 - HIGH×1
-✅ OK dockershield-test-web-1
-⚠️  WARN dockershield-test-watcher-1 - MEDIUM×1
-❌ ISSUES dockershield-test-hostnet-1 - HIGH×1
+❌ ISSUES skobel-test-db-1 - CRITICAL×1
+✅ OK skobel-test-cache-1
+❌ ISSUES skobel-test-admin-1 - HIGH×1
+✅ OK skobel-test-web-1
+⚠️  WARN skobel-test-watcher-1 - MEDIUM×1
+❌ ISSUES skobel-test-hostnet-1 - HIGH×1
 
 
 🔧 FINDINGS AND FIXES
 ═══════════════════════════════════════════════
 
-1. [CRITICAL] Container 'dockershield-test-db-1': PostgreSQL published on all interfaces
+1. [CRITICAL] Container 'skobel-test-db-1': PostgreSQL published on all interfaces
    Port: 5432/tcp on 0.0.0.0, ::
    Why: Other machines can connect to this port unless a firewall outside Docker blocks it. UFW rules do not apply to published container ports by default.
    Fix:
@@ -62,7 +66,7 @@ Found 6 container(s)
        -p 127.0.0.1:5432:5432
      If only other containers use it, remove the `ports:` entry; containers on the same compose network reach it by service name on port 5432.
 
-2. [HIGH] Container 'dockershield-test-admin-1': Portainer published on all interfaces
+2. [HIGH] Container 'skobel-test-admin-1': Portainer published on all interfaces
    Port: 9000/tcp on 0.0.0.0, ::
    Why: Other machines can connect to this port unless a firewall outside Docker blocks it. UFW rules do not apply to published container ports by default.
    Fix:
@@ -73,12 +77,12 @@ Found 6 container(s)
        -p 127.0.0.1:9000:9000
      If only other containers use it, remove the `ports:` entry; containers on the same compose network reach it by service name on port 9000.
 
-3. [HIGH] Container 'dockershield-test-hostnet-1': Container uses host networking
+3. [HIGH] Container 'skobel-test-hostnet-1': Container uses host networking
    Why: Every port the container listens on is open on the host directly. Docker does not report these ports, so they are not listed in this scan.
    Fix:
      List what it listens on:
        sudo ss -tlnp
-     Then remove `network_mode: host` from 'dockershield-test-hostnet-1' and publish only what is needed:
+     Then remove `network_mode: host` from 'skobel-test-hostnet-1' and publish only what is needed:
        ports:
          - "127.0.0.1:PORT:PORT"
 
@@ -90,7 +94,7 @@ Found 6 container(s)
      For remote access use a Docker context over SSH instead:
        https://docs.docker.com/engine/security/protect-access/
 
-5. [MEDIUM] Container 'dockershield-test-watcher-1': Docker socket is mounted into the container
+5. [MEDIUM] Container 'skobel-test-watcher-1': Docker socket is mounted into the container
    Why: A process in this container can control the Docker daemon, which is equivalent to root on the host. A read-only mount does not change that.
    Fix:
      If the container needs the Docker API, put a filtering proxy in between and mount the socket only there, for example:
@@ -170,7 +174,7 @@ Log Analysis: [MEDIUM]
 
 ✓ Scan complete
 
-Several servers? A team version (history, alerts, checks from outside) is planned. Waitlist: https://adrian13508.github.io/dockershield/?ref=cli#teams  (hide: --quiet or DOCKERSHIELD_QUIET=1)
+Several servers? A team version (history, alerts, checks from outside) is planned. Waitlist: https://adrian13508.github.io/skobel/?ref=cli#teams  (hide: --quiet or SKOBEL_QUIET=1)
 ```
 
 ## After applying the fixes
@@ -191,12 +195,12 @@ Host sections omitted here; they are identical to the ones above.
 
 📦 RUNNING CONTAINERS
 ═══════════════════════════════════════════════
-✅ OK dockershield-test-db-1
-✅ OK dockershield-test-cache-1
-✅ OK dockershield-test-web-1
-✅ OK dockershield-test-hostnet-1
-✅ OK dockershield-test-admin-1
-✅ OK dockershield-test-watcher-1
+✅ OK skobel-test-db-1
+✅ OK skobel-test-cache-1
+✅ OK skobel-test-web-1
+✅ OK skobel-test-hostnet-1
+✅ OK skobel-test-admin-1
+✅ OK skobel-test-watcher-1
 
 
 🔧 FINDINGS AND FIXES
@@ -211,48 +215,48 @@ Host sections omitted here; they are identical to the ones above.
        https://docs.docker.com/engine/security/protect-access/
 ```
 
-## `dockershield scan --prometheus`
+## `skobel scan --prometheus`
 
 From the first run.
 
 ```
-# HELP dockershield_security_score Overall security score (0-100, higher is better).
-# TYPE dockershield_security_score gauge
-dockershield_security_score 45
-# HELP dockershield_risks Detected risks by severity across all containers.
-# TYPE dockershield_risks gauge
-dockershield_risks{severity="critical"} 1
-dockershield_risks{severity="high"} 2
-dockershield_risks{severity="medium"} 2
-dockershield_risks{severity="low"} 2
-dockershield_risks{severity="info"} 0
-# HELP dockershield_containers Number of containers by state.
-# TYPE dockershield_containers gauge
-dockershield_containers{state="running"} 6
-# HELP dockershield_exposed_port Container port published on a public interface (0.0.0.0 or ::). Value is always 1; alert on the labels.
-# TYPE dockershield_exposed_port gauge
-dockershield_exposed_port{container="dockershield-test-db-1",port="5432",protocol="tcp",severity="critical"} 1
-dockershield_exposed_port{container="dockershield-test-admin-1",port="9000",protocol="tcp",severity="high"} 1
-dockershield_exposed_port{container="dockershield-test-web-1",port="8080",protocol="tcp",severity="low"} 1
-# HELP dockershield_firewall_checked Whether iptables could be read (1) or not (0). When 0, the UFW metrics are omitted.
-# TYPE dockershield_firewall_checked gauge
-dockershield_firewall_checked 1
-# HELP dockershield_ufw_active Whether UFW is active (1) or not (0).
-# TYPE dockershield_ufw_active gauge
-dockershield_ufw_active 0
-# HELP dockershield_docker_bypassing_ufw Whether Docker is bypassing UFW rules (1) or not (0).
-# TYPE dockershield_docker_bypassing_ufw gauge
-dockershield_docker_bypassing_ufw 0
-# HELP dockershield_last_scan_timestamp_seconds Unix timestamp of the last completed scan.
-# TYPE dockershield_last_scan_timestamp_seconds gauge
-dockershield_last_scan_timestamp_seconds 1795079277
+# HELP skobel_security_score Overall security score (0-100, higher is better).
+# TYPE skobel_security_score gauge
+skobel_security_score 45
+# HELP skobel_risks Detected risks by severity across all containers.
+# TYPE skobel_risks gauge
+skobel_risks{severity="critical"} 1
+skobel_risks{severity="high"} 2
+skobel_risks{severity="medium"} 2
+skobel_risks{severity="low"} 2
+skobel_risks{severity="info"} 0
+# HELP skobel_containers Number of containers by state.
+# TYPE skobel_containers gauge
+skobel_containers{state="running"} 6
+# HELP skobel_exposed_port Container port published on a public interface (0.0.0.0 or ::). Value is always 1; alert on the labels.
+# TYPE skobel_exposed_port gauge
+skobel_exposed_port{container="skobel-test-db-1",port="5432",protocol="tcp",severity="critical"} 1
+skobel_exposed_port{container="skobel-test-admin-1",port="9000",protocol="tcp",severity="high"} 1
+skobel_exposed_port{container="skobel-test-web-1",port="8080",protocol="tcp",severity="low"} 1
+# HELP skobel_firewall_checked Whether iptables could be read (1) or not (0). When 0, the UFW metrics are omitted.
+# TYPE skobel_firewall_checked gauge
+skobel_firewall_checked 1
+# HELP skobel_ufw_active Whether UFW is active (1) or not (0).
+# TYPE skobel_ufw_active gauge
+skobel_ufw_active 0
+# HELP skobel_docker_bypassing_ufw Whether Docker is bypassing UFW rules (1) or not (0).
+# TYPE skobel_docker_bypassing_ufw gauge
+skobel_docker_bypassing_ufw 0
+# HELP skobel_last_scan_timestamp_seconds Unix timestamp of the last completed scan.
+# TYPE skobel_last_scan_timestamp_seconds gauge
+skobel_last_scan_timestamp_seconds 1795079277
 ```
 
-## `dockershield scan --json`
+## `skobel scan --json`
 
 See [example_report.json](example_report.json), produced by the first run.
 
-## `dockershield compare`
+## `skobel compare`
 
 `before.json` is a scan of `test/exposed/compose.yml`, `after.json` a scan after switching
 to `compose.fixed.yml`:
@@ -263,10 +267,10 @@ Before: 2026-11-19 09:25   score 45
 After:  2026-11-19 09:25   score 95 (+50)
 
 Resolved (4)
-  [CRITICAL] dockershield-test-db-1 5432/tcp: PostgreSQL published on all interfaces
-  [HIGH]     dockershield-test-admin-1 9000/tcp: Portainer published on all interfaces
-  [HIGH]     dockershield-test-hostnet-1: Container uses host networking
-  [MEDIUM]   dockershield-test-watcher-1: Docker socket is mounted into the container
+  [CRITICAL] skobel-test-db-1 5432/tcp: PostgreSQL published on all interfaces
+  [HIGH]     skobel-test-admin-1 9000/tcp: Portainer published on all interfaces
+  [HIGH]     skobel-test-hostnet-1: Container uses host networking
+  [MEDIUM]   skobel-test-watcher-1: Docker socket is mounted into the container
 
 New (0)
 
@@ -274,7 +278,7 @@ Still present (1)
   [MEDIUM]   Docker daemon listens on TCP (TLS client verification is on)
 ```
 
-## `dockershield probe`
+## `skobel probe`
 
 Two containers on one Docker network stand in for two machines: `ds-server` runs the
 test services, the probe runs in the other one. The network has IPv4 and IPv6.
@@ -282,14 +286,14 @@ test services, the probe runs in the other one. The network has IPv4 and IPv6.
 Without confirmation the command refuses:
 
 ```
-$ dockershield probe ds-server --from-report report.json
+$ skobel probe ds-server --from-report report.json
 refusing to probe ds-server without confirmation.
 
 probe opens connections to ports on that host. Only do this for servers you
 own or are authorized to test; probing other people's systems may be illegal.
 
 If ds-server is yours, run the command again with --i-own-this-host.
-This is asked once per host and remembered in /root/.dockershield/probe_hosts
+This is asked once per host and remembered in /root/.skobel/probe_hosts
 ```
 
 With the scan report from the server (`--from-report report.json --i-own-this-host`):
@@ -298,13 +302,13 @@ With the scan report from the server (`--from-report report.json --i-own-this-ho
 Probing ds-server (192.168.0.2, fd00:d5:d5::2) from this machine
 3 port(s), timeout 3s, up to 10 connections at a time
 
-5432/tcp  (container dockershield-test-db-1; expected PostgreSQL; bound on 0.0.0.0, ::)
+5432/tcp  (container skobel-test-db-1; expected PostgreSQL; bound on 0.0.0.0, ::)
   192.168.0.2                             published and confirmed from outside: PostgreSQL, answered the SSL negotiation request
   fd00:d5:d5::2                           published and confirmed from outside: PostgreSQL, answered the SSL negotiation request
-8080/tcp  (container dockershield-test-web-1; expected HTTP; bound on 0.0.0.0, ::)
+8080/tcp  (container skobel-test-web-1; expected HTTP; bound on 0.0.0.0, ::)
   192.168.0.2                             published and confirmed from outside: HTTP, "HTTP/1.1 200 OK nginx/1.31.9"
   fd00:d5:d5::2                           published and confirmed from outside: HTTP, "HTTP/1.1 200 OK nginx/1.31.9"
-9000/tcp  (container dockershield-test-admin-1; expected Portainer; bound on 0.0.0.0, ::)
+9000/tcp  (container skobel-test-admin-1; expected Portainer; bound on 0.0.0.0, ::)
   192.168.0.2                             published and confirmed from outside: HTTP, "HTTP/1.1 200 OK nginx/1.31.9"
   fd00:d5:d5::2                           published and confirmed from outside: HTTP, "HTTP/1.1 200 OK nginx/1.31.9"
 
@@ -321,13 +325,13 @@ the finding `ipv6_unfiltered`, and the probe shows why:
 Probing ds-server (192.168.0.2, fd00:d5:d5::2) from this machine
 3 port(s), timeout 3s, up to 10 connections at a time
 
-5432/tcp  (container dockershield-test-db-1; expected PostgreSQL; bound on 0.0.0.0, ::)
+5432/tcp  (container skobel-test-db-1; expected PostgreSQL; bound on 0.0.0.0, ::)
   192.168.0.2                             published but blocked on the way (no answer)
   fd00:d5:d5::2                           published and confirmed from outside: PostgreSQL, answered the SSL negotiation request
-8080/tcp  (container dockershield-test-web-1; expected HTTP; bound on 0.0.0.0, ::)
+8080/tcp  (container skobel-test-web-1; expected HTTP; bound on 0.0.0.0, ::)
   192.168.0.2                             published and confirmed from outside: HTTP, "HTTP/1.1 200 OK nginx/1.31.9"
   fd00:d5:d5::2                           published and confirmed from outside: HTTP, "HTTP/1.1 200 OK nginx/1.31.9"
-9000/tcp  (container dockershield-test-admin-1; expected Portainer; bound on 0.0.0.0, ::)
+9000/tcp  (container skobel-test-admin-1; expected Portainer; bound on 0.0.0.0, ::)
   192.168.0.2                             published and confirmed from outside: HTTP, "HTTP/1.1 200 OK nginx/1.31.9"
   fd00:d5:d5::2                           published and confirmed from outside: HTTP, "HTTP/1.1 200 OK nginx/1.31.9"
 
@@ -336,7 +340,7 @@ Probing ds-server (192.168.0.2, fd00:d5:d5::2) from this machine
 This is the view from this machine only. Another network may be treated differently by a firewall.
 ```
 
-Without a report, IPv4 only (`dockershield probe ds-server -4`). Port 80 belongs to the
+Without a report, IPv4 only (`skobel probe ds-server -4`). Port 80 belongs to the
 container with host networking, which the scan cannot list:
 
 ```
@@ -360,5 +364,5 @@ This is the view from this machine only. Another network may be treated differen
 
 ## Exit code
 
-`dockershield scan --fail-on critical` exits with code 2 in the first environment.
-`dockershield scan --fail-on high` exits with code 0 in the second.
+`skobel scan --fail-on critical` exits with code 2 in the first environment.
+`skobel scan --fail-on high` exits with code 0 in the second.

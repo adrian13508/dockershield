@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/adrian13508/dockershield/pkg/models"
+	"github.com/adrian13508/skobel/pkg/models"
 )
 
 // Finding IDs. Part of the JSON output: do not rename.

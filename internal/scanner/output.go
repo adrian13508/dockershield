@@ -165,7 +165,7 @@ func (r *CategoryResult) FormatTerminal() {
 	}
 
 	fmt.Println()
-	fmt.Println("Run 'dockershield scan' for full analysis.")
+	fmt.Println("Run 'skobel scan' for full analysis.")
 	fmt.Println()
 }
 

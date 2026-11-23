@@ -1,21 +1,24 @@
-# DockerShield
+# Skobel
 
-[![Release](https://img.shields.io/github/v/release/adrian13508/dockershield)](https://github.com/adrian13508/dockershield/releases)
-[![CI](https://github.com/adrian13508/dockershield/actions/workflows/ci.yml/badge.svg)](https://github.com/adrian13508/dockershield/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/adrian13508/dockershield)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/adrian13508/skobel)](https://github.com/adrian13508/skobel/releases)
+[![CI](https://github.com/adrian13508/skobel/actions/workflows/ci.yml/badge.svg)](https://github.com/adrian13508/skobel/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/adrian13508/skobel)](LICENSE)
 
 Docker publishes container ports by writing its own iptables rules, so a port mapped
 with `-p 5432:5432` is reachable from outside even when UFW says it is denied
 ([Docker documentation](https://docs.docker.com/engine/network/packet-filtering-firewalls/#docker-and-ufw)).
-DockerShield is a read-only command-line scanner that lists which container ports are
+Skobel is a read-only command-line scanner that lists which container ports are
 published and on which addresses, checks whether UFW or the `DOCKER-USER` chain filters
 them, and audits a few host settings such as the SSH configuration.
 It does not change any configuration and it does not fix anything. A scan on the server
 cannot tell whether a port is reachable from the internet; for that, the separate
 `probe` command connects to the ports from another machine.
 
-> This README describes the `main` branch. The latest release is v0.1.3 and predates
-> the findings list, the IPv6 checks, `probe` and the checksum-verified `upgrade` described here.
+> Skobel was called DockerShield up to v0.1.3. This README describes the `main` branch.
+> The latest release is v0.1.3, published under the old name, and predates the findings
+> list, the IPv6 checks, `probe` and the checksum-verified `upgrade` described here.
+> No release has been published under the new name yet. Until one is, `install.sh` has
+> nothing to download: build from source.
 > See [CHANGELOG.md](CHANGELOG.md).
 
 ## Example
@@ -25,7 +28,7 @@ Real output, shortened. The scan ran against the test services in
 [EXAMPLE_OUTPUT.md](EXAMPLE_OUTPUT.md).
 
 ```
-$ dockershield scan
+$ skobel scan
 [...]
 ┌────────────────────────────────────────────┐
 │  SECURITY SUMMARY                          │
@@ -41,18 +44,18 @@ $ dockershield scan
 
 📦 RUNNING CONTAINERS
 ═══════════════════════════════════════════════
-❌ ISSUES dockershield-test-db-1 - CRITICAL×1
-✅ OK dockershield-test-cache-1
-❌ ISSUES dockershield-test-admin-1 - HIGH×1
-✅ OK dockershield-test-web-1
-⚠️  WARN dockershield-test-watcher-1 - MEDIUM×1
-❌ ISSUES dockershield-test-hostnet-1 - HIGH×1
+❌ ISSUES skobel-test-db-1 - CRITICAL×1
+✅ OK skobel-test-cache-1
+❌ ISSUES skobel-test-admin-1 - HIGH×1
+✅ OK skobel-test-web-1
+⚠️  WARN skobel-test-watcher-1 - MEDIUM×1
+❌ ISSUES skobel-test-hostnet-1 - HIGH×1
 
 
 🔧 FINDINGS AND FIXES
 ═══════════════════════════════════════════════
 
-1. [CRITICAL] Container 'dockershield-test-db-1': PostgreSQL published on all interfaces
+1. [CRITICAL] Container 'skobel-test-db-1': PostgreSQL published on all interfaces
    Port: 5432/tcp on 0.0.0.0, ::
    Why: Other machines can connect to this port unless a firewall outside Docker blocks it. UFW rules do not apply to published container ports by default.
    Fix:
@@ -71,7 +74,7 @@ reports 95/100. The remaining finding is about the test host itself.
 
 ## Install
 
-DockerShield needs access to the Docker socket. The firewall and host checks need root.
+Skobel needs access to the Docker socket. The firewall and host checks need root.
 The host checks are written for Linux. On macOS and Windows only the container scan
 works.
 
@@ -79,14 +82,14 @@ works.
 
 ```bash
 VERSION=0.1.3
-ARCHIVE=dockershield_${VERSION}_linux_x86_64.tar.gz   # or linux_arm64, linux_armv7, darwin_arm64, darwin_x86_64
-BASE=https://github.com/adrian13508/dockershield/releases/download/v${VERSION}
+ARCHIVE=skobel_${VERSION}_linux_x86_64.tar.gz   # or linux_arm64, linux_armv7, darwin_arm64, darwin_x86_64
+BASE=https://github.com/adrian13508/skobel/releases/download/v${VERSION}
 
 curl -sSLO "$BASE/$ARCHIVE"
 curl -sSLO "$BASE/checksums.txt"
 sha256sum -c checksums.txt --ignore-missing
-tar -xzf "$ARCHIVE" dockershield
-sudo install -m 0755 dockershield /usr/local/bin/dockershield
+tar -xzf "$ARCHIVE" skobel
+sudo install -m 0755 skobel /usr/local/bin/skobel
 ```
 
 `checksums.txt` is published with every release. It protects against a corrupted or
@@ -96,7 +99,7 @@ the checksums come from the same place as the binaries. Releases are not signed.
 ### From source
 
 ```bash
-go install github.com/adrian13508/dockershield/cmd/dockershield@latest
+go install github.com/adrian13508/skobel/cmd/skobel@latest
 ```
 
 Requires the Go version listed in [go.mod](go.mod).
@@ -107,32 +110,32 @@ The script does the same steps as the manual install above, including the SHA256
 and stops if the checksum does not match. Download it and read it before running it:
 
 ```bash
-curl -sSLO https://raw.githubusercontent.com/adrian13508/dockershield/main/install.sh
+curl -sSLO https://raw.githubusercontent.com/adrian13508/skobel/main/install.sh
 less install.sh
 bash install.sh
 ```
 
-`DOCKERSHIELD_VERSION=v0.1.3` pins a release. `INSTALL_DIR` changes the target directory
+`SKOBEL_VERSION` pins a release, for example `SKOBEL_VERSION=v0.2.0`. `INSTALL_DIR` changes the target directory
 (default `/usr/local/bin`, which uses `sudo`).
 
 ## Usage
 
 ```bash
-sudo dockershield scan                     # full scan, text output
-sudo dockershield scan --verbose           # include stopped containers and networks
-sudo dockershield scan --json              # JSON on stdout
-sudo dockershield scan --json -o report.json
-sudo dockershield scan --prometheus        # metrics for the node_exporter textfile collector
-sudo dockershield scan --fail-on critical  # exit code 2 if a finding at or above this level exists
-sudo dockershield scan --report report.html   # also write an HTML report
-dockershield compare before.json after.json   # what changed between two JSON reports
+sudo skobel scan                     # full scan, text output
+sudo skobel scan --verbose           # include stopped containers and networks
+sudo skobel scan --json              # JSON on stdout
+sudo skobel scan --json -o report.json
+sudo skobel scan --prometheus        # metrics for the node_exporter textfile collector
+sudo skobel scan --fail-on critical  # exit code 2 if a finding at or above this level exists
+sudo skobel scan --report report.html   # also write an HTML report
+skobel compare before.json after.json   # what changed between two JSON reports
 
-dockershield status                        # summary of the last scan, read from ~/.dockershield/state.json
-dockershield check firewall                # one category: ports, networks, firewall, containers
-dockershield doctor                        # checks that the scanner's own requirements are met
-dockershield version --check               # asks GitHub whether a newer release exists
-dockershield upgrade                       # replaces the binary with the latest release
-dockershield probe HOST --from-report report.json   # from another machine, see below
+skobel status                        # summary of the last scan, read from ~/.skobel/state.json
+skobel check firewall                # one category: ports, networks, firewall, containers
+skobel doctor                        # checks that the scanner's own requirements are met
+skobel version --check               # asks GitHub whether a newer release exists
+skobel upgrade                       # replaces the binary with the latest release
+skobel probe HOST --from-report report.json   # from another machine, see below
 ```
 
 `-o` accepts relative paths only. For an absolute path, redirect stdout.
@@ -145,17 +148,17 @@ machine and reports what answers.
 
 ```bash
 # on the server
-sudo dockershield scan --json > report.json
+sudo skobel scan --json > report.json
 
 # on a different machine, after copying report.json there
-dockershield probe my-server.example.com --from-report report.json --i-own-this-host
+skobel probe my-server.example.com --from-report report.json --i-own-this-host
 ```
 
 Output from the test setup, after PostgreSQL was blocked for IPv4 only (full run in
 [EXAMPLE_OUTPUT.md](EXAMPLE_OUTPUT.md)):
 
 ```
-5432/tcp  (container dockershield-test-db-1; expected PostgreSQL; bound on 0.0.0.0, ::)
+5432/tcp  (container skobel-test-db-1; expected PostgreSQL; bound on 0.0.0.0, ::)
   192.168.0.2                             published but blocked on the way (no answer)
   fd00:d5:d5::2                           published and confirmed from outside: PostgreSQL, answered the SSL negotiation request
 ```
@@ -163,7 +166,7 @@ Output from the test setup, after PostgreSQL was blocked for IPv4 only (full run
 **Only probe servers you own or are authorized to test.** Connecting to ports of other
 people's systems may be illegal. The first probe of a host is refused unless you pass
 `--i-own-this-host`; the confirmation is remembered per host in
-`~/.dockershield/probe_hosts`.
+`~/.skobel/probe_hosts`.
 
 What it does:
 
@@ -190,8 +193,7 @@ Limits: one host per run, no ranges, at most 200 ports, at most 32 connections a
 `--fail-on-open` exits with code 2 if any probed port is open.
 
 The result is the view from the machine that ran the probe. A firewall may treat another
-network differently. A hosted variant that needs no second machine is described in
-[DESIGN-hosted-probe.md](DESIGN-hosted-probe.md). It is not built.
+network differently.
 
 ## How it works
 
@@ -268,7 +270,7 @@ audit":
   `system-auth` and `password-auth`, plus `groups` and `lastlog`
 - whether rkhunter, chkrootkit or AIDE are installed, their log files under
   `/var/log`, the AIDE database under `/var/lib`, and AIDE cron entries.
-  DockerShield does not run a rootkit or integrity scan itself.
+  Skobel does not run a rootkit or integrity scan itself.
 - `/var/log/auth.log` or `/var/log/secure`, `/var/log/syslog` or `/var/log/messages`,
   and `journalctl --since "24 hours ago"` at priorities err, warning and crit
 
@@ -278,15 +280,15 @@ audit":
 the release archive and `checksums.txt`, and replaces the binary only if the SHA256
 matches. There is no telemetry.
 
-**Files written.** Each scan writes `~/.dockershield/state.json` so that `status` can
+**Files written.** Each scan writes `~/.skobel/state.json` so that `status` can
 read it. `-o` writes the file you name. `probe` appends confirmed hosts to
-`~/.dockershield/probe_hosts`. `--report` writes the file you name. Nothing else is
+`~/.skobel/probe_hosts`. `--report` writes the file you name. Nothing else is
 written.
 
 **Notice about a team version.** The text output of `scan` ends with one line that links
 to a waitlist for a planned hosted version. It is a printed line: the tool does not
 contact that address. It is not part of JSON, Prometheus or HTML output. `--quiet` or
-`DOCKERSHIELD_QUIET=1` removes it.
+`SKOBEL_QUIET=1` removes it.
 
 ## Output formats
 
@@ -304,18 +306,18 @@ Finding IDs: `port_exposed`, `host_network`, `docker_socket_mounted`, `docker_ap
 **Prometheus** (`scan --prometheus`): gauges in the text exposition format.
 
 ```
-dockershield_security_score
-dockershield_risks{severity}
-dockershield_containers{state}
-dockershield_exposed_port{container,port,protocol,severity}
-dockershield_firewall_checked
-dockershield_ufw_active
-dockershield_docker_bypassing_ufw
-dockershield_last_scan_timestamp_seconds
+skobel_security_score
+skobel_risks{severity}
+skobel_containers{state}
+skobel_exposed_port{container,port,protocol,severity}
+skobel_firewall_checked
+skobel_ufw_active
+skobel_docker_bypassing_ufw
+skobel_last_scan_timestamp_seconds
 ```
 
-`dockershield_ufw_active` and `dockershield_docker_bypassing_ufw` are omitted when
-`dockershield_firewall_checked` is 0, so that "could not check" does not look like
+`skobel_ufw_active` and `skobel_docker_bypassing_ufw` are omitted when
+`skobel_firewall_checked` is 0, so that "could not check" does not look like
 "all fine".
 
 Cron entry for the node_exporter
@@ -323,26 +325,26 @@ Cron entry for the node_exporter
 The write is atomic, and a failed scan leaves the previous file in place:
 
 ```
-*/15 * * * * root dockershield scan --prometheus > /var/lib/node_exporter/textfile/dockershield.prom.$$ && mv /var/lib/node_exporter/textfile/dockershield.prom.$$ /var/lib/node_exporter/textfile/dockershield.prom
+*/15 * * * * root skobel scan --prometheus > /var/lib/node_exporter/textfile/skobel.prom.$$ && mv /var/lib/node_exporter/textfile/skobel.prom.$$ /var/lib/node_exporter/textfile/skobel.prom
 ```
 
 Alert rules that use these metrics:
 
 ```yaml
 groups:
-  - name: dockershield
+  - name: skobel
     rules:
       - alert: CriticalPortExposed
-        expr: dockershield_exposed_port{severity="critical"} == 1
+        expr: skobel_exposed_port{severity="critical"} == 1
         for: 5m
       - alert: DockerBypassingUFW
-        expr: dockershield_docker_bypassing_ufw == 1
+        expr: skobel_docker_bypassing_ufw == 1
         for: 5m
-      - alert: DockershieldFirewallNotChecked
-        expr: dockershield_firewall_checked == 0
+      - alert: SkobelFirewallNotChecked
+        expr: skobel_firewall_checked == 0
         for: 30m
-      - alert: DockershieldScanStale
-        expr: time() - dockershield_last_scan_timestamp_seconds > 3600
+      - alert: SkobelScanStale
+        expr: time() - skobel_last_scan_timestamp_seconds > 3600
 ```
 
 **HTML** (`scan --report report.html`): one file with inline CSS, no scripts and no
@@ -362,10 +364,10 @@ Before: 2026-11-19 09:25   score 45
 After:  2026-11-19 09:25   score 95 (+50)
 
 Resolved (4)
-  [CRITICAL] dockershield-test-db-1 5432/tcp: PostgreSQL published on all interfaces
-  [HIGH]     dockershield-test-admin-1 9000/tcp: Portainer published on all interfaces
-  [HIGH]     dockershield-test-hostnet-1: Container uses host networking
-  [MEDIUM]   dockershield-test-watcher-1: Docker socket is mounted into the container
+  [CRITICAL] skobel-test-db-1 5432/tcp: PostgreSQL published on all interfaces
+  [HIGH]     skobel-test-admin-1 9000/tcp: Portainer published on all interfaces
+  [HIGH]     skobel-test-hostnet-1: Container uses host networking
+  [MEDIUM]   skobel-test-watcher-1: Docker socket is mounted into the container
 
 New (0)
 
@@ -381,7 +383,7 @@ for such a report.
 rated at or above that level. Without Prometheus:
 
 ```bash
-dockershield scan --fail-on critical > /dev/null || curl -s -d "critical exposure on $(hostname)" ntfy.sh/your-topic
+skobel scan --fail-on critical > /dev/null || curl -s -d "critical exposure on $(hostname)" ntfy.sh/your-topic
 ```
 
 ## Limitations
@@ -396,7 +398,7 @@ dockershield scan --fail-on critical > /dev/null || curl -s -d "critical exposur
   chain is enough for the scanner to stop reporting the UFW bypass, even if that rule
   does not cover the published ports.
 - **Without root the firewall is not checked.** The text output says so, JSON has
-  `firewall.checked: false`, and the metric `dockershield_firewall_checked` is 0.
+  `firewall.checked: false`, and the metric `skobel_firewall_checked` is 0.
   Run scheduled scans as root.
 - **Host networking hides ports.** A container with `network_mode: host` is reported,
   but the ports it listens on are not, because the Docker API does not list them.
@@ -418,7 +420,7 @@ dockershield scan --fail-on critical > /dev/null || curl -s -d "critical exposur
 
 ## Comparison
 
-| | DockerShield `scan` | [ufw-docker](https://github.com/chaifeng/ufw-docker) | External port scanner (for example nmap from another machine) |
+| | Skobel `scan` | [ufw-docker](https://github.com/chaifeng/ufw-docker) | External port scanner (for example nmap from another machine) |
 |---|---|---|---|
 | Runs on | the Docker host | the Docker host | a different machine |
 | Changes the system | no | yes: adds rules to `/etc/ufw/after.rules` that filter traffic in the `DOCKER-USER` chain | no |
@@ -430,26 +432,21 @@ dockershield scan --fail-on critical > /dev/null || curl -s -d "critical exposur
 
 The tools answer different questions. ufw-docker changes the firewall so that UFW rules
 apply to published ports. An external scan shows what an outside client can connect to.
-DockerShield `scan` shows what the host is configured to publish and which container is
-responsible. `dockershield probe --from-report` is an external check limited to the
+Skobel `scan` shows what the host is configured to publish and which container is
+responsible. `skobel probe --from-report` is an external check limited to the
 ports the scan reported, and prints both views side by side.
 
 ## Team version (planned)
 
 The command-line tool checks one server at a time and keeps no history. A hosted version
 for people who run several servers is being considered. It is not built. The
-[project page](https://adrian13508.github.io/dockershield/?ref=readme#teams) describes
+[project page](https://adrian13508.github.io/skobel/?ref=readme#teams) describes
 the idea and links to a waitlist form (Google Forms) with two questions.
 
 Interest is measured without anything in the tool: [metrics.sh](metrics.sh) reads this
 repository's public numbers and its 14-day traffic from the GitHub API once a day. The
 links to the project page carry a `ref` parameter (`readme`, `cli`) so that sign-ups can
 be told apart by where they came from. The page itself loads no third-party scripts.
-
-## Background
-
-TODO(Adrian): Two or three paragraphs in your own words. Why you wrote this, what
-happened on your server, what you checked afterwards. Only facts you can stand behind.
 
 ## Development
 
@@ -472,3 +469,7 @@ checked, including the use of AI tools.
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
+
+Skobel is not affiliated with or endorsed by Docker, Inc. Docker and the Docker logo are
+trademarks or registered trademarks of Docker, Inc. in the United States and/or other
+countries.

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/adrian13508/dockershield/pkg/models"
+	"github.com/adrian13508/skobel/pkg/models"
 )
 
 func TestPrometheusGenerate(t *testing.T) {
@@ -32,16 +32,16 @@ func TestPrometheusGenerate(t *testing.T) {
 	out := string(NewPrometheusReporter().Generate(containers, firewall, summary, 42))
 
 	for _, want := range []string{
-		"dockershield_security_score 42\n",
-		`dockershield_risks{severity="critical"} 1` + "\n",
-		`dockershield_risks{severity="high"} 0` + "\n",
-		`dockershield_containers{state="running"} 1` + "\n",
-		`dockershield_containers{state="exited"} 1` + "\n",
-		`dockershield_exposed_port{container="db",port="5432",protocol="tcp",severity="critical"} 1` + "\n",
-		`dockershield_exposed_port{container="we\"ird\\name",port="8080",protocol="tcp",severity="medium"} 1` + "\n",
-		"dockershield_ufw_active 1\n",
-		"dockershield_docker_bypassing_ufw 1\n",
-		"dockershield_last_scan_timestamp_seconds ",
+		"skobel_security_score 42\n",
+		`skobel_risks{severity="critical"} 1` + "\n",
+		`skobel_risks{severity="high"} 0` + "\n",
+		`skobel_containers{state="running"} 1` + "\n",
+		`skobel_containers{state="exited"} 1` + "\n",
+		`skobel_exposed_port{container="db",port="5432",protocol="tcp",severity="critical"} 1` + "\n",
+		`skobel_exposed_port{container="we\"ird\\name",port="8080",protocol="tcp",severity="medium"} 1` + "\n",
+		"skobel_ufw_active 1\n",
+		"skobel_docker_bypassing_ufw 1\n",
+		"skobel_last_scan_timestamp_seconds ",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output missing %q\n--- full output:\n%s", want, out)
@@ -62,10 +62,10 @@ func TestPrometheusGenerate(t *testing.T) {
 func TestPrometheusGenerateNoFirewall(t *testing.T) {
 	out := string(NewPrometheusReporter().Generate(nil, nil, models.RiskSummary{}, 100))
 
-	if strings.Contains(out, "dockershield_ufw_active") {
+	if strings.Contains(out, "skobel_ufw_active") {
 		t.Error("firewall metrics must be absent when firewall info is nil")
 	}
-	if !strings.Contains(out, "dockershield_security_score 100\n") {
+	if !strings.Contains(out, "skobel_security_score 100\n") {
 		t.Errorf("missing score metric:\n%s", out)
 	}
 }
@@ -73,10 +73,10 @@ func TestPrometheusGenerateNoFirewall(t *testing.T) {
 // When iptables could not be read, 0 would look like "all fine"
 func TestPrometheusFirewallNotChecked(t *testing.T) {
 	out := string(NewPrometheusReporter().Generate(nil, &models.FirewallInfo{Checked: false}, models.RiskSummary{}, 100))
-	if !strings.Contains(out, "dockershield_firewall_checked 0\n") {
-		t.Errorf("missing dockershield_firewall_checked 0:\n%s", out)
+	if !strings.Contains(out, "skobel_firewall_checked 0\n") {
+		t.Errorf("missing skobel_firewall_checked 0:\n%s", out)
 	}
-	for _, absent := range []string{"dockershield_ufw_active", "dockershield_docker_bypassing_ufw"} {
+	for _, absent := range []string{"skobel_ufw_active", "skobel_docker_bypassing_ufw"} {
 		if strings.Contains(out, absent) {
 			t.Errorf("%s must be omitted when the firewall was not checked:\n%s", absent, out)
 		}

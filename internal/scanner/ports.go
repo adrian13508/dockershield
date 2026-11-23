@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/adrian13508/dockershield/internal/analyzer"
-	"github.com/adrian13508/dockershield/internal/docker"
-	"github.com/adrian13508/dockershield/pkg/models"
+	"github.com/adrian13508/skobel/internal/analyzer"
+	"github.com/adrian13508/skobel/internal/docker"
+	"github.com/adrian13508/skobel/pkg/models"
 )
 
 // CheckPorts performs a focused scan on port exposures

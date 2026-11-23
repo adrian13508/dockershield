@@ -6,13 +6,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/adrian13508/dockershield/pkg/models"
+	"github.com/adrian13508/skobel/pkg/models"
 )
 
 // PrometheusReporter renders scan results in the Prometheus text exposition
 // format, for use with the node_exporter textfile collector:
 //
-//	dockershield scan --prometheus > /var/lib/node_exporter/textfile/dockershield.prom
+//	skobel scan --prometheus > /var/lib/node_exporter/textfile/skobel.prom
 type PrometheusReporter struct{}
 
 // NewPrometheusReporter creates a new Prometheus reporter
@@ -35,10 +35,10 @@ func (r *PrometheusReporter) Generate(
 ) []byte {
 	var b strings.Builder
 
-	header(&b, "dockershield_security_score", "Overall security score (0-100, higher is better).")
-	fmt.Fprintf(&b, "dockershield_security_score %d\n", score)
+	header(&b, "skobel_security_score", "Overall security score (0-100, higher is better).")
+	fmt.Fprintf(&b, "skobel_security_score %d\n", score)
 
-	header(&b, "dockershield_risks", "Detected risks by severity across all containers.")
+	header(&b, "skobel_risks", "Detected risks by severity across all containers.")
 	for _, s := range []struct {
 		severity string
 		count    int
@@ -49,10 +49,10 @@ func (r *PrometheusReporter) Generate(
 		{"low", riskSummary.Low},
 		{"info", riskSummary.Info},
 	} {
-		fmt.Fprintf(&b, "dockershield_risks{severity=\"%s\"} %d\n", s.severity, s.count)
+		fmt.Fprintf(&b, "skobel_risks{severity=\"%s\"} %d\n", s.severity, s.count)
 	}
 
-	header(&b, "dockershield_containers", "Number of containers by state.")
+	header(&b, "skobel_containers", "Number of containers by state.")
 	states := map[string]int{}
 	for _, c := range containers {
 		states[c.State]++
@@ -63,10 +63,10 @@ func (r *PrometheusReporter) Generate(
 	}
 	sort.Strings(stateNames)
 	for _, s := range stateNames {
-		fmt.Fprintf(&b, "dockershield_containers{state=\"%s\"} %d\n", labelEscaper.Replace(s), states[s])
+		fmt.Fprintf(&b, "skobel_containers{state=\"%s\"} %d\n", labelEscaper.Replace(s), states[s])
 	}
 
-	header(&b, "dockershield_exposed_port", "Container port published on a public interface (0.0.0.0 or ::). Value is always 1; alert on the labels.")
+	header(&b, "skobel_exposed_port", "Container port published on a public interface (0.0.0.0 or ::). Value is always 1; alert on the labels.")
 	// A port published on IPv4 and IPv6 yields two bindings with the same
 	// labels; a duplicate series makes the textfile collector reject the file.
 	seen := map[string]bool{}
@@ -75,7 +75,7 @@ func (r *PrometheusReporter) Generate(
 			if p.ExposureType != models.ExposurePublic && p.AddressScope != models.ScopePublicAddress {
 				continue
 			}
-			line := fmt.Sprintf("dockershield_exposed_port{container=\"%s\",port=\"%s\",protocol=\"%s\",severity=\"%s\"} 1\n",
+			line := fmt.Sprintf("skobel_exposed_port{container=\"%s\",port=\"%s\",protocol=\"%s\",severity=\"%s\"} 1\n",
 				labelEscaper.Replace(c.Name), labelEscaper.Replace(p.HostPort),
 				labelEscaper.Replace(p.Protocol), labelEscaper.Replace(string(p.RiskLevel)))
 			if !seen[line] {
@@ -86,20 +86,20 @@ func (r *PrometheusReporter) Generate(
 	}
 
 	if firewall != nil {
-		header(&b, "dockershield_firewall_checked", "Whether iptables could be read (1) or not (0). When 0, the UFW metrics are omitted.")
-		fmt.Fprintf(&b, "dockershield_firewall_checked %d\n", boolToInt(firewall.Checked))
+		header(&b, "skobel_firewall_checked", "Whether iptables could be read (1) or not (0). When 0, the UFW metrics are omitted.")
+		fmt.Fprintf(&b, "skobel_firewall_checked %d\n", boolToInt(firewall.Checked))
 	}
 
 	if firewall != nil && firewall.Checked {
-		header(&b, "dockershield_ufw_active", "Whether UFW is active (1) or not (0).")
-		fmt.Fprintf(&b, "dockershield_ufw_active %d\n", boolToInt(firewall.UFWActive))
+		header(&b, "skobel_ufw_active", "Whether UFW is active (1) or not (0).")
+		fmt.Fprintf(&b, "skobel_ufw_active %d\n", boolToInt(firewall.UFWActive))
 
-		header(&b, "dockershield_docker_bypassing_ufw", "Whether Docker is bypassing UFW rules (1) or not (0).")
-		fmt.Fprintf(&b, "dockershield_docker_bypassing_ufw %d\n", boolToInt(firewall.DockerBypassingUFW))
+		header(&b, "skobel_docker_bypassing_ufw", "Whether Docker is bypassing UFW rules (1) or not (0).")
+		fmt.Fprintf(&b, "skobel_docker_bypassing_ufw %d\n", boolToInt(firewall.DockerBypassingUFW))
 	}
 
-	header(&b, "dockershield_last_scan_timestamp_seconds", "Unix timestamp of the last completed scan.")
-	fmt.Fprintf(&b, "dockershield_last_scan_timestamp_seconds %d\n", time.Now().Unix())
+	header(&b, "skobel_last_scan_timestamp_seconds", "Unix timestamp of the last completed scan.")
+	fmt.Fprintf(&b, "skobel_last_scan_timestamp_seconds %d\n", time.Now().Unix())
 
 	return []byte(b.String())
 }

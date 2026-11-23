@@ -1,4 +1,4 @@
-module github.com/adrian13508/dockershield
+module github.com/adrian13508/skobel
 
 go 1.24.7
 

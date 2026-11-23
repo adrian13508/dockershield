@@ -1,21 +1,21 @@
 #!/bin/bash
-# DockerShield installer.
+# Skobel installer.
 #
 # Downloads a release archive from GitHub, verifies its SHA256 against the
 # release's checksums.txt, and installs the binary.
 #
-#   curl -sSLO https://raw.githubusercontent.com/adrian13508/dockershield/main/install.sh
+#   curl -sSLO https://raw.githubusercontent.com/adrian13508/skobel/main/install.sh
 #   less install.sh          # read it first
 #   bash install.sh
 #
 # Environment:
-#   DOCKERSHIELD_VERSION   release tag to install (default: latest), e.g. v0.1.3
+#   SKOBEL_VERSION   release tag to install (default: latest), e.g. v0.2.0
 #   INSTALL_DIR            target directory (default: /usr/local/bin)
 
 set -euo pipefail
 
-REPO="adrian13508/dockershield"
-BINARY_NAME="dockershield"
+REPO="adrian13508/skobel"
+BINARY_NAME="skobel"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 
 info() { echo "==> $1"; }
@@ -48,7 +48,7 @@ main() {
         *) fail "unsupported architecture: $(uname -m)" ;;
     esac
 
-    version="${DOCKERSHIELD_VERSION:-}"
+    version="${SKOBEL_VERSION:-}"
     if [ -z "$version" ]; then
         info "Looking up latest release"
         version=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" |

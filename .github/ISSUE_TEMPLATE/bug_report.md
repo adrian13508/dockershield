@@ -11,7 +11,7 @@ labels: bug
 **Command you ran**
 
 **Environment**
-- `dockershield version`:
+- `skobel version`:
 - OS and version:
 - `docker version` (server):
 - Run as root? yes / no

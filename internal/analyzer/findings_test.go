@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/adrian13508/dockershield/pkg/models"
+	"github.com/adrian13508/skobel/pkg/models"
 )
 
 func binding(hostIP, hostPort, containerPort string) models.PortBinding {

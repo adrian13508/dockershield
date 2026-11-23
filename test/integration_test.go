@@ -3,10 +3,10 @@
 // Integration tests: start the compose projects in test/exposed against a
 // real Docker daemon and check what the built scanner reports.
 //
-//	go build -o dockershield ./cmd/dockershield
-//	DOCKERSHIELD_BIN=$PWD/dockershield go test -tags integration ./test/
+//	go build -o skobel ./cmd/skobel
+//	SKOBEL_BIN=$PWD/skobel go test -tags integration ./test/
 //
-// DOCKERSHIELD_TEST_DIR overrides the directory holding the compose files.
+// SKOBEL_TEST_DIR overrides the directory holding the compose files.
 package test
 
 import (
@@ -19,23 +19,23 @@ import (
 	"testing"
 	"time"
 
-	"github.com/adrian13508/dockershield/pkg/models"
+	"github.com/adrian13508/skobel/pkg/models"
 )
 
-const project = "dockershield-test-"
+const project = "skobel-test-"
 
 func bin(t *testing.T) string {
 	t.Helper()
-	b := os.Getenv("DOCKERSHIELD_BIN")
+	b := os.Getenv("SKOBEL_BIN")
 	if b == "" {
-		t.Fatal("set DOCKERSHIELD_BIN to the built dockershield binary")
+		t.Fatal("set SKOBEL_BIN to the built skobel binary")
 	}
 	return b
 }
 
 func up(t *testing.T, file string) {
 	t.Helper()
-	dir := os.Getenv("DOCKERSHIELD_TEST_DIR")
+	dir := os.Getenv("SKOBEL_TEST_DIR")
 	if dir == "" {
 		dir = "exposed"
 	}

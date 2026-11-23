@@ -49,7 +49,7 @@ func (r *DiagnosticResults) OutputTerminal() {
 	const boxWidth = 42
 
 	fmt.Println("┌────────────────────────────────────────────┐")
-	fmt.Printf("│  %s  │\n", padTableLine(cyan("DockerShield Doctor"), boxWidth-2))
+	fmt.Printf("│  %s  │\n", padTableLine(cyan("Skobel Doctor"), boxWidth-2))
 	fmt.Printf("│  %s  │\n", padTableLine(white("System Diagnostics"), boxWidth-2))
 	fmt.Println("└────────────────────────────────────────────┘")
 	fmt.Println()
@@ -101,12 +101,12 @@ func (r *DiagnosticResults) OutputTerminal() {
 	r.printCheckResult("Previous scan", r.Config.StateFileExists, green, yellow, red)
 	fmt.Println()
 
-	// DockerShield info
-	fmt.Printf("%s\n", white("DOCKERSHIELD:"))
+	// Skobel info
+	fmt.Printf("%s\n", white("SKOBEL:"))
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	r.printCheckResult("Version", r.DockerShield.Version, green, yellow, red)
-	r.printCheckResult("Binary", r.DockerShield.BinaryLocation, green, yellow, red)
-	r.printCheckResult("Build", r.DockerShield.BuildInfo, green, yellow, red)
+	r.printCheckResult("Version", r.Skobel.Version, green, yellow, red)
+	r.printCheckResult("Binary", r.Skobel.BinaryLocation, green, yellow, red)
+	r.printCheckResult("Build", r.Skobel.BuildInfo, green, yellow, red)
 	fmt.Println()
 
 	// Summary
@@ -136,7 +136,7 @@ func (r *DiagnosticResults) OutputTerminal() {
 
 	// Helpful message
 	if !r.HasErrors() {
-		fmt.Println("Run 'dockershield scan' to perform security analysis.")
+		fmt.Println("Run 'skobel scan' to perform security analysis.")
 	}
 }
 

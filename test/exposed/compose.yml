@@ -1,6 +1,6 @@
 # Deliberately misconfigured services for testing the scanner.
 # Do not run this on a machine reachable from the internet.
-name: dockershield-test
+name: skobel-test
 services:
   db:
     image: postgres:16-alpine

@@ -1,4 +1,4 @@
-# GoReleaser configuration for DockerShield
+# GoReleaser configuration for Skobel
 # Documentation: https://goreleaser.com
 
 version: 2
@@ -9,9 +9,9 @@ before:
     - go mod tidy
 
 builds:
-  - id: dockershield
-    binary: dockershield
-    main: ./cmd/dockershield
+  - id: skobel
+    binary: skobel
+    main: ./cmd/skobel
     env:
       - CGO_ENABLED=0
     goos:
@@ -39,7 +39,7 @@ builds:
       - -X main.commit={{.Commit}}
 
 archives:
-  - id: dockershield
+  - id: skobel
     format: tar.gz
     name_template: >-
       {{ .ProjectName }}_
@@ -90,12 +90,12 @@ changelog:
 release:
   github:
     owner: adrian13508
-    name: dockershield
+    name: skobel
   draft: false
   prerelease: auto
   mode: replace
   header: |
-    ## DockerShield {{ .Tag }}
+    ## Skobel {{ .Tag }}
 
     Read-only scanner for Docker port exposure and host firewall state.
 
@@ -103,7 +103,7 @@ release:
 
     ```bash
     # Linux/macOS
-    curl -sSL https://raw.githubusercontent.com/adrian13508/dockershield/main/install.sh | bash
+    curl -sSL https://raw.githubusercontent.com/adrian13508/skobel/main/install.sh | bash
 
     # Or download the binary for your platform below
     ```
@@ -111,7 +111,7 @@ release:
   footer: |
     ---
 
-    **Full Changelog**: https://github.com/adrian13508/dockershield/compare/{{ .PreviousTag }}...{{ .Tag }}
+    **Full Changelog**: https://github.com/adrian13508/skobel/compare/{{ .PreviousTag }}...{{ .Tag }}
 
     ### Verification
 
@@ -125,12 +125,12 @@ release:
 
 # Uncomment if you want to publish to Homebrew
 # brews:
-#   - name: dockershield
+#   - name: skobel
 #     repository:
 #       owner: adrian13508
 #       name: homebrew-tap
-#     homepage: https://github.com/adrian13508/dockershield
+#     homepage: https://github.com/adrian13508/skobel
 #     description: Docker security scanner - read-only scanner for exposed container ports
 #     license: Apache-2.0
 #     install: |
-#       bin.install "dockershield"
+#       bin.install "skobel"

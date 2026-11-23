@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/adrian13508/dockershield/internal/probe"
-	"github.com/adrian13508/dockershield/pkg/models"
+	"github.com/adrian13508/skobel/internal/probe"
+	"github.com/adrian13508/skobel/pkg/models"
 	"github.com/spf13/cobra"
 )
 
@@ -40,9 +40,9 @@ published with --from-report, or an explicit list with --ports.
 
 Example:
   # on the server
-  sudo dockershield scan --json > report.json
+  sudo skobel scan --json > report.json
   # on your laptop
-  dockershield probe my-server.example.com --from-report report.json --i-own-this-host`,
+  skobel probe my-server.example.com --from-report report.json --i-own-this-host`,
 	Args: cobra.ExactArgs(1),
 	RunE: runProbe,
 }
@@ -185,7 +185,7 @@ func probeTargets() ([]probe.Target, error) {
 		}
 		var report models.ScanResult
 		if err := json.Unmarshal(data, &report); err != nil {
-			return nil, fmt.Errorf("%s is not a scan report (expected the output of `dockershield scan --json`): %w", probeFromReport, err)
+			return nil, fmt.Errorf("%s is not a scan report (expected the output of `skobel scan --json`): %w", probeFromReport, err)
 		}
 		return probe.TargetsFromReport(report), nil
 	case probePorts != "":
@@ -333,7 +333,7 @@ func probeConfirmedFile() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("cannot find the home directory: %w", err)
 	}
-	return filepath.Join(home, ".dockershield", "probe_hosts"), nil
+	return filepath.Join(home, ".skobel", "probe_hosts"), nil
 }
 
 // isConfirmed reports whether the user has confirmed ownership of host before

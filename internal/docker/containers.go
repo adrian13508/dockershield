@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/adrian13508/dockershield/internal/analyzer"
-	"github.com/adrian13508/dockershield/pkg/models"
+	"github.com/adrian13508/skobel/internal/analyzer"
+	"github.com/adrian13508/skobel/pkg/models"
 	"github.com/docker/docker/api/types/container"
 )
 

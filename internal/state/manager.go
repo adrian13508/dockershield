@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/adrian13508/dockershield/pkg/models"
+	"github.com/adrian13508/skobel/pkg/models"
 )
 
 const (
 	stateFileName = "state.json"
-	configDirName = ".dockershield"
+	configDirName = ".skobel"
 )
 
 // Manager handles state persistence

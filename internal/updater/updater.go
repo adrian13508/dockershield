@@ -21,9 +21,9 @@ const (
 	// GitHubOwner is the repository owner
 	GitHubOwner = "adrian13508"
 	// GitHubRepo is the repository name
-	GitHubRepo = "dockershield"
+	GitHubRepo = "skobel"
 
-	binaryName    = "dockershield"
+	binaryName    = "skobel"
 	checksumsFile = "checksums.txt"
 	maxDownload   = 200 << 20 // refuse absurdly large downloads
 )

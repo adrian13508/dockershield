@@ -31,6 +31,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - run: go build -o dockershield ./cmd/dockershield
+      - run: go build -o skobel ./cmd/skobel
       - name: Scan deliberately misconfigured containers
-        run: DOCKERSHIELD_BIN=$PWD/dockershield go test -v -tags integration ./test/
+        run: SKOBEL_BIN=$PWD/skobel go test -v -tags integration ./test/

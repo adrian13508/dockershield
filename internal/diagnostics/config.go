@@ -9,7 +9,7 @@ import (
 // CheckConfig performs configuration file checks
 func CheckConfig() *ConfigInfo {
 	homeDir, _ := os.UserHomeDir()
-	configDir := filepath.Join(homeDir, ".dockershield")
+	configDir := filepath.Join(homeDir, ".skobel")
 
 	return &ConfigInfo{
 		ConfigDirExists:  checkConfigDirExists(configDir),

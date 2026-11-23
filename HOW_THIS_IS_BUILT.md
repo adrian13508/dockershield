@@ -1,17 +1,13 @@
 # How this code is written and checked
 
-DockerShield is written by one person, with AI coding tools.
+Skobel is written by one person, with AI coding tools.
 
 ## Use of AI tools
 
 - Changes made after v0.1.3 are written with an AI coding assistant (Claude Code). That
   includes code, tests, the README and this file.
-- TODO(Adrian): State how the releases up to v0.1.3 were written: which parts by hand,
-  which with which tool. Only what you remember for certain.
 - The assistant works in the repository under the maintainer's direction. The maintainer
   decides what gets built, reads the changes and merges them.
-- TODO(Adrian): One or two sentences on how you review a change before merging: what you
-  read, what you run, on which machines.
 
 ## What is checked, and how
 
@@ -39,8 +35,7 @@ DockerShield is written by one person, with AI coding tools.
   ufw-docker installs, but not against a live host with UFW.
 - The fail2ban, update, user, rootkit, integrity and log checks have no automated tests.
   They shell out to system tools and read system files, and have only been run by hand.
-- No distribution matrix. TODO(Adrian): list the distributions and Docker versions you
-  have actually run it on.
+- No distribution matrix.
 - No external security audit.
 
 The README section "Limitations" lists the known wrong results. If you find a claim in

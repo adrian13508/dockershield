@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/adrian13508/dockershield/internal/analyzer"
-	"github.com/adrian13508/dockershield/pkg/models"
+	"github.com/adrian13508/skobel/internal/analyzer"
+	"github.com/adrian13508/skobel/pkg/models"
 	"github.com/spf13/cobra"
 )
 
@@ -16,14 +16,14 @@ var compareFailOnNew bool
 var compareCmd = &cobra.Command{
 	Use:   "compare <before.json> <after.json>",
 	Short: "Compare two scan reports (before and after a change)",
-	Long: `Compares two reports written by 'dockershield scan --json' and lists which
+	Long: `Compares two reports written by 'skobel scan --json' and lists which
 findings were resolved, which are new and which remain.
 
 Example:
-  sudo dockershield scan --json > before.json
+  sudo skobel scan --json > before.json
   # apply fixes
-  sudo dockershield scan --json > after.json
-  dockershield compare before.json after.json`,
+  sudo skobel scan --json > after.json
+  skobel compare before.json after.json`,
 	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		before, err := loadReport(args[0])
@@ -55,10 +55,10 @@ func loadReport(path string) (models.ScanResult, error) {
 		return report, fmt.Errorf("cannot read report: %w", err)
 	}
 	if err := json.Unmarshal(data, &report); err != nil {
-		return report, fmt.Errorf("%s is not a scan report (expected the output of `dockershield scan --json`): %w", path, err)
+		return report, fmt.Errorf("%s is not a scan report (expected the output of `skobel scan --json`): %w", path, err)
 	}
 	if report.Timestamp.IsZero() {
-		return report, fmt.Errorf("%s is not a scan report (expected the output of `dockershield scan --json`)", path)
+		return report, fmt.Errorf("%s is not a scan report (expected the output of `skobel scan --json`)", path)
 	}
 	return report, nil
 }

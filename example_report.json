@@ -4,10 +4,10 @@
   "containers": [
     {
       "id": "6af1bdbee901",
-      "name": "dockershield-test-db-1",
+      "name": "skobel-test-db-1",
       "image": "postgres:16-alpine",
       "state": "running",
-      "network_mode": "dockershield-test_default",
+      "network_mode": "skobel-test_default",
       "ports": [
         {
           "host_ip": "0.0.0.0",
@@ -31,7 +31,7 @@
         }
       ],
       "networks": [
-        "dockershield-test_default"
+        "skobel-test_default"
       ],
       "highest_risk": "critical",
       "risk_count": {
@@ -46,10 +46,10 @@
     },
     {
       "id": "05b32b2549f7",
-      "name": "dockershield-test-cache-1",
+      "name": "skobel-test-cache-1",
       "image": "redis:7-alpine",
       "state": "running",
-      "network_mode": "dockershield-test_default",
+      "network_mode": "skobel-test_default",
       "ports": [
         {
           "host_ip": "127.0.0.1",
@@ -63,7 +63,7 @@
         }
       ],
       "networks": [
-        "dockershield-test_default"
+        "skobel-test_default"
       ],
       "highest_risk": "low",
       "risk_count": {
@@ -78,10 +78,10 @@
     },
     {
       "id": "aed384eeb96a",
-      "name": "dockershield-test-admin-1",
+      "name": "skobel-test-admin-1",
       "image": "nginx:alpine",
       "state": "running",
-      "network_mode": "dockershield-test_default",
+      "network_mode": "skobel-test_default",
       "ports": [
         {
           "host_ip": "0.0.0.0",
@@ -105,7 +105,7 @@
         }
       ],
       "networks": [
-        "dockershield-test_default"
+        "skobel-test_default"
       ],
       "highest_risk": "high",
       "risk_count": {
@@ -120,10 +120,10 @@
     },
     {
       "id": "be3157a6e5fe",
-      "name": "dockershield-test-web-1",
+      "name": "skobel-test-web-1",
       "image": "nginx:alpine",
       "state": "running",
-      "network_mode": "dockershield-test_default",
+      "network_mode": "skobel-test_default",
       "ports": [
         {
           "host_ip": "0.0.0.0",
@@ -147,7 +147,7 @@
         }
       ],
       "networks": [
-        "dockershield-test_default"
+        "skobel-test_default"
       ],
       "highest_risk": "low",
       "risk_count": {
@@ -162,13 +162,13 @@
     },
     {
       "id": "83dbeb5c0aa5",
-      "name": "dockershield-test-watcher-1",
+      "name": "skobel-test-watcher-1",
       "image": "alpine:3",
       "state": "running",
-      "network_mode": "dockershield-test_default",
+      "network_mode": "skobel-test_default",
       "ports": null,
       "networks": [
-        "dockershield-test_default"
+        "skobel-test_default"
       ],
       "highest_risk": "info",
       "risk_count": {
@@ -183,7 +183,7 @@
     },
     {
       "id": "459a0884affc",
-      "name": "dockershield-test-hostnet-1",
+      "name": "skobel-test-hostnet-1",
       "image": "nginx:alpine",
       "state": "running",
       "network_mode": "host",
@@ -232,7 +232,7 @@
     },
     {
       "id": "9ffe459254ec",
-      "name": "dockershield-test_default",
+      "name": "skobel-test_default",
       "driver": "bridge",
       "subnet": "172.19.0.0/16",
       "gateway": "172.19.0.1",
@@ -821,7 +821,7 @@
     {
       "id": "port_exposed",
       "severity": "critical",
-      "container": "dockershield-test-db-1",
+      "container": "skobel-test-db-1",
       "port": "5432/tcp",
       "addresses": [
         "0.0.0.0",
@@ -834,7 +834,7 @@
     {
       "id": "port_exposed",
       "severity": "high",
-      "container": "dockershield-test-admin-1",
+      "container": "skobel-test-admin-1",
       "port": "9000/tcp",
       "addresses": [
         "0.0.0.0",
@@ -847,10 +847,10 @@
     {
       "id": "host_network",
       "severity": "high",
-      "container": "dockershield-test-hostnet-1",
+      "container": "skobel-test-hostnet-1",
       "title": "Container uses host networking",
       "detail": "Every port the container listens on is open on the host directly. Docker does not report these ports, so they are not listed in this scan.",
-      "fix": "List what it listens on:\n  sudo ss -tlnp\nThen remove `network_mode: host` from 'dockershield-test-hostnet-1' and publish only what is needed:\n  ports:\n    - \"127.0.0.1:PORT:PORT\""
+      "fix": "List what it listens on:\n  sudo ss -tlnp\nThen remove `network_mode: host` from 'skobel-test-hostnet-1' and publish only what is needed:\n  ports:\n    - \"127.0.0.1:PORT:PORT\""
     },
     {
       "id": "docker_api_tcp",
@@ -865,7 +865,7 @@
     {
       "id": "docker_socket_mounted",
       "severity": "medium",
-      "container": "dockershield-test-watcher-1",
+      "container": "skobel-test-watcher-1",
       "title": "Docker socket is mounted into the container",
       "detail": "A process in this container can control the Docker daemon, which is equivalent to root on the host. A read-only mount does not change that.",
       "fix": "If the container needs the Docker API, put a filtering proxy in between and mount the socket only there, for example:\n  https://github.com/Tecnativa/docker-socket-proxy\nOtherwise remove the volume:\n  - /var/run/docker.sock:/var/run/docker.sock"

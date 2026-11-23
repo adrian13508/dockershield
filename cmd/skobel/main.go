@@ -7,16 +7,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/adrian13508/dockershield/internal/analyzer"
-	"github.com/adrian13508/dockershield/internal/diagnostics"
-	"github.com/adrian13508/dockershield/internal/docker"
-	"github.com/adrian13508/dockershield/internal/reporter"
-	"github.com/adrian13508/dockershield/internal/scanner"
-	"github.com/adrian13508/dockershield/internal/security"
-	"github.com/adrian13508/dockershield/internal/state"
-	"github.com/adrian13508/dockershield/internal/system"
-	"github.com/adrian13508/dockershield/internal/updater"
-	"github.com/adrian13508/dockershield/pkg/models"
+	"github.com/adrian13508/skobel/internal/analyzer"
+	"github.com/adrian13508/skobel/internal/diagnostics"
+	"github.com/adrian13508/skobel/internal/docker"
+	"github.com/adrian13508/skobel/internal/reporter"
+	"github.com/adrian13508/skobel/internal/scanner"
+	"github.com/adrian13508/skobel/internal/security"
+	"github.com/adrian13508/skobel/internal/state"
+	"github.com/adrian13508/skobel/internal/system"
+	"github.com/adrian13508/skobel/internal/updater"
+	"github.com/adrian13508/skobel/pkg/models"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
@@ -37,11 +37,11 @@ func main() {
 
 // rootCmd is the base command when called without subcommands
 var rootCmd = &cobra.Command{
-	Use:   "dockershield",
+	Use:   "skobel",
 	Short: "Complete VPS security scanning tool",
-	Long: `DockerShield - A comprehensive VPS security scanner
+	Long: `Skobel - A comprehensive VPS security scanner
 
-DockerShield performs security audits of your VPS including:
+Skobel performs security audits of your VPS including:
   • Docker container port exposure analysis
   • Network topology mapping
   • Firewall/UFW configuration
@@ -92,12 +92,12 @@ Checks for:
   - Log analysis (failed logins, sudo usage)
 
 Example:
-  dockershield scan
-  dockershield scan --json
-  dockershield scan --output report.json
-  dockershield scan --prometheus > dockershield.prom
-  dockershield scan --fail-on critical
-  dockershield scan --report report.html`,
+  skobel scan
+  skobel scan --json
+  skobel scan --output report.json
+  skobel scan --prometheus > skobel.prom
+  skobel scan --fail-on critical
+  skobel scan --report report.html`,
 	RunE: runScan,
 }
 
@@ -106,7 +106,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show version information",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("DockerShield %s (commit: %s)\n", version, commit)
+		fmt.Printf("Skobel %s (commit: %s)\n", version, commit)
 
 		// Network access only on explicit request
 		if versionCheck {
@@ -115,11 +115,11 @@ var versionCmd = &cobra.Command{
 	},
 }
 
-// upgradeCmd upgrades dockershield to the latest version
+// upgradeCmd upgrades skobel to the latest version
 var upgradeCmd = &cobra.Command{
 	Use:   "upgrade",
-	Short: "Upgrade DockerShield to the latest version",
-	Long: `Upgrades DockerShield to the latest version from GitHub releases.
+	Short: "Upgrade Skobel to the latest version",
+	Long: `Upgrades Skobel to the latest version from GitHub releases.
 
 This command will:
   - Check for the latest release on GitHub
@@ -127,7 +127,7 @@ This command will:
   - Verify the update was successful
 
 Example:
-  dockershield upgrade`,
+  skobel upgrade`,
 	RunE: runUpgrade,
 }
 
@@ -147,9 +147,9 @@ This is useful for quick checks and integrations that need fast responses
 without performing a full scan.
 
 Example:
-  dockershield status
-  dockershield status --json
-  dockershield status --fresh     # Run new scan if cache is old`,
+  skobel status
+  skobel status --json
+  skobel status --fresh     # Run new scan if cache is old`,
 	RunE: runStatus,
 }
 
@@ -170,10 +170,10 @@ This command is faster than a full scan and useful for CI/CD pipelines
 or when you only need to check a specific aspect of security.
 
 Example:
-  dockershield check ports
-  dockershield check ports --json
-  dockershield check ports --container nginx
-  dockershield check firewall --severity critical`,
+  skobel check ports
+  skobel check ports --json
+  skobel check ports --container nginx
+  skobel check firewall --severity critical`,
 	Args:      cobra.ExactArgs(1),
 	ValidArgs: []string{"ports", "networks", "firewall", "containers", "all"},
 	RunE:      runCheck,
@@ -183,7 +183,7 @@ Example:
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
 	Short: "Run system diagnostics",
-	Long: `Diagnose DockerShield and system requirements.
+	Long: `Diagnose Skobel and system requirements.
 
 Checks:
   - System information (OS, kernel, architecture)
@@ -191,15 +191,15 @@ Checks:
   - Permissions (iptables, Docker socket, config files)
   - Dependencies (iptables, UFW)
   - Configuration files
-  - DockerShield installation
+  - Skobel installation
 
 This command is useful for troubleshooting issues and verifying that
-DockerShield can run all security checks properly.
+Skobel can run all security checks properly.
 
 Example:
-  dockershield doctor
-  dockershield doctor --json
-  dockershield doctor --verbose`,
+  skobel doctor
+  skobel doctor --json
+  skobel doctor --verbose`,
 	RunE: runDoctor,
 }
 
@@ -216,7 +216,7 @@ var (
 
 // waitlistURL is where the team-version waitlist lives. The ref parameter
 // tells the sign-up form that the visitor came from the CLI.
-const waitlistURL = "https://adrian13508.github.io/dockershield/?ref=cli#teams"
+const waitlistURL = "https://adrian13508.github.io/skobel/?ref=cli#teams"
 
 // waitlistNotice returns the one line shown at the end of a text-mode scan,
 // or "" when it is switched off. It is never part of JSON, Prometheus or
@@ -226,7 +226,7 @@ func waitlistNotice(quiet bool, env string) string {
 		return ""
 	}
 	return "Several servers? A team version (history, alerts, checks from outside) is planned. Waitlist: " +
-		waitlistURL + "  (hide: --quiet or DOCKERSHIELD_QUIET=1)"
+		waitlistURL + "  (hide: --quiet or SKOBEL_QUIET=1)"
 }
 
 // versionCheck enables the GitHub release lookup in `version --check`
@@ -293,7 +293,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 	quietMode := jsonOutput || promOutput
 
 	if !quietMode {
-		fmt.Println("🔍 DockerShield Security Scanner")
+		fmt.Println("🔍 Skobel Security Scanner")
 		fmt.Println("================================")
 		fmt.Println()
 	}
@@ -464,7 +464,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println("\n✓ Scan complete")
-	if notice := waitlistNotice(quietNotice, os.Getenv("DOCKERSHIELD_QUIET")); notice != "" {
+	if notice := waitlistNotice(quietNotice, os.Getenv("SKOBEL_QUIET")); notice != "" {
 		fmt.Println("\n" + notice)
 	}
 
@@ -931,7 +931,7 @@ func runUpgrade(cmd *cobra.Command, args []string) error {
 	green := color.New(color.FgGreen).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
 
-	fmt.Printf("%s\n", cyan("🔄 DockerShield Upgrade"))
+	fmt.Printf("%s\n", cyan("🔄 Skobel Upgrade"))
 	fmt.Println("═══════════════════════════════════════════════")
 	fmt.Println()
 
@@ -977,7 +977,7 @@ func runUpgrade(cmd *cobra.Command, args []string) error {
 	fmt.Println("✓")
 
 	fmt.Printf("\n%s\n", green("✓ Successfully upgraded to "+updateInfo.LatestVersion))
-	fmt.Println("\nPlease restart dockershield to use the new version.")
+	fmt.Println("\nPlease restart skobel to use the new version.")
 
 	return nil
 }
@@ -1000,7 +1000,7 @@ func checkForUpdatesNotification() {
 
 	if updateInfo.Available {
 		yellow := color.New(color.FgYellow).SprintFunc()
-		fmt.Printf("\n%s\n", yellow("💡 New version available: "+updateInfo.LatestVersion+" (run 'dockershield upgrade')"))
+		fmt.Printf("\n%s\n", yellow("💡 New version available: "+updateInfo.LatestVersion+" (run 'skobel upgrade')"))
 		fmt.Println()
 	}
 }
@@ -1454,7 +1454,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 
 	// Check if state exists
 	if !stateMgr.Exists() {
-		return fmt.Errorf("no previous scan found. Run 'dockershield scan' first")
+		return fmt.Errorf("no previous scan found. Run 'skobel scan' first")
 	}
 
 	// Check age if max-age is set

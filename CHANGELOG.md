@@ -37,7 +37,6 @@ The project was called DockerShield up to v0.1.3. It is now Skobel.
 - `probe --from-report report.json` checks exactly the ports a scan found published and prints both views: "published and confirmed from outside" or "published but blocked on the way"
 - Service identification from banners (SSH, MySQL, SMTP, FTP, VNC) and one minimal unauthenticated handshake for PostgreSQL, Redis and HTTP. No login attempts
 - Refuses to run for a host until `--i-own-this-host` has been passed once. Limits: one host, 200 ports, 32 concurrent connections, 30 s timeout
-- `DESIGN-hosted-probe.md`: design for a hosted probe that checks only the requester's own address. Not built
 
 ### Added (detection)
 - `findings[]` in JSON and a "Findings and fixes" section in text output: every result rated medium or above, sorted by severity, each with a concrete fix (compose snippet or command)

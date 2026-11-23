@@ -193,8 +193,7 @@ Limits: one host per run, no ranges, at most 200 ports, at most 32 connections a
 `--fail-on-open` exits with code 2 if any probed port is open.
 
 The result is the view from the machine that ran the probe. A firewall may treat another
-network differently. A hosted variant that needs no second machine is described in
-[DESIGN-hosted-probe.md](DESIGN-hosted-probe.md). It is not built.
+network differently.
 
 ## How it works
 
@@ -448,11 +447,6 @@ Interest is measured without anything in the tool: [metrics.sh](metrics.sh) read
 repository's public numbers and its 14-day traffic from the GitHub API once a day. The
 links to the project page carry a `ref` parameter (`readme`, `cli`) so that sign-ups can
 be told apart by where they came from. The page itself loads no third-party scripts.
-
-## Background
-
-TODO(Adrian): Two or three paragraphs in your own words. Why you wrote this, what
-happened on your server, what you checked afterwards. Only facts you can stand behind.
 
 ## Development
 
